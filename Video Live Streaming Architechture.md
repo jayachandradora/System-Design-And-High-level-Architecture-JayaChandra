@@ -1,5 +1,5 @@
 # Software-Design-Architecture
-Software Design Architecture - High Level Design
+High Level Design
 
 ![image](https://user-images.githubusercontent.com/115500959/195161832-b282ae91-c571-499f-92fe-64e83215598d.png)
 
