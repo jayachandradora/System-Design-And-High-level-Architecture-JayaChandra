@@ -1,5 +1,5 @@
 # Software-Design-Architecture
-Software Design Architecture - High Level Design
+column-based DB VS row-based DB
 
 ![image](https://user-images.githubusercontent.com/115500959/195122670-59473d64-23cc-48ec-a6fa-2d78e9bdb37b.png)
 
