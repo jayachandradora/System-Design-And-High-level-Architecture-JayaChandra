@@ -69,6 +69,17 @@ End Points: www.xyz.com/api/1.0/users/123/orders/o123 <br>
 
 ## 6. Filtering, sorting, paging, and field selection
 
+All these are done on collections. 
+
+Ex. 
+API Details: Filter based on language
+URI: www.bookmyshow.com/api/1.0/film
+Action: Method - GET
+Query Param: language : English
+             limit : 5 - limit to 5 records
+             sort : sort the records on release date or sort based on theater or sort based on name ascending or descending order etc.
+             paging : start offset and limit of records etc.
+
 ## 7. Versioning
 
 ## 8. API Documentation
