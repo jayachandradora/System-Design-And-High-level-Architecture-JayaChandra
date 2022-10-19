@@ -69,19 +69,30 @@ End Points: www.xyz.com/api/1.0/users/123/orders/o123 <br>
 
 ## 6. Filtering, sorting, paging, and field selection
 
-All these are done on collections. 
+All these are done on collections. <br>
 
-Ex. 
-API Details: Filter based on language
-URI: www.bookmyshow.com/api/1.0/film
-Action: Method - GET
-Query Param: language : English
-             limit : 5 - limit to 5 records
-             sort : sort the records on release date or sort based on theater or sort based on name ascending or descending order etc.
-             paging : start offset and limit of records etc.
+Ex. <br>
+API Details: Filter based on language<br>
+URI: www.bookmyshow.com/api/1.0/filim <br>
+Action: Method - GET <br>
+Query Param: language : English <br>
+             limit : 5 - limit to 5 records <br>
+             sort : sort the records on release date or sort based on theater or sort based on name ascending or descending order etc. <br>
+             paging : start offset and limit of records etc. <br>
 
 ## 7. Versioning
 
+Version could 1.0, v1, release date or Sprint release number etc.<br>
+Ex.<br>
+
+www.bookmyshow.com/api/1.0/filim <br>
+www.bookmyshow.com/api/v1/filim <br>
+www.bookmyshow.com/api/2022_09_19/filim <br>
+
 ## 8. API Documentation
 
+Please create good documentation with these resouces or end points so that consumers will better understand and will not miss use any time.
+
 ## 9. Using SSL/TLS
+
+Don't compromise on data with communication protocol. So, allways use "HTTPS".
