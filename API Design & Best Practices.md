@@ -96,4 +96,4 @@ Incase you are using java spring boot as a framework then there is a good docume
 
 ## 9. Using SSL/TLS
 
-Don't compromise on data with communication protocol. So, allways use "HTTPS".
+Don't compromise on data with communication protocol and no exception with your data. So, allways use "HTTPS".
