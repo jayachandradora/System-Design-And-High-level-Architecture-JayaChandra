@@ -23,10 +23,10 @@ API Details: Get All users details
 Action: GET <br>
 End Points: www.xyz.com/api/1.0/users 
 
-API Details: Create users <br>
+API Details: Create users 
 Action: POST<br>
 End Points: www.xyz.com/api/1.0/users 
-*Body:* {
+"Body:" {
         "id":111
         "name": "JayaChandra"
         "Address": "Bangalore"
