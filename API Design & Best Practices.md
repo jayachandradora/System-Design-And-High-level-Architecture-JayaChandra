@@ -13,10 +13,12 @@ In REST API's we should not use vers or actions. Allways use nouns end points na
 Good to put resource names in small letters.<br>
 
 #### Formats
+```ruby
 Action : Method Name - GET, POST, PUT, DELETE, PATCH etc.
 End Points: www.xyz.com/api/1.0/users
-
+```
 #### Ex. 
+```ruby
 API Details: Get All users details <br>
 Action: GET <br>
 End Points: www.xyz.com/api/1.0/users <br>
@@ -24,24 +26,28 @@ End Points: www.xyz.com/api/1.0/users <br>
 API Details: Create users <br>
 Action: POST<br>
 End Points: www.xyz.com/api/1.0/users <br>
-*Body:* {<br>
+*Body:* {
         "id":111<br>
         "name": "JayaChandra"<br>
         "Address": "Bangalore"<br>
-      }<br>
+      }
 
 API Details: Delete users <br>
 Action: DELETE<br>
 End Points: www.xyz.com/api/1.0/users/123 <br>
+```
 
 #### Bad Practices API Design
+```ruby
 End Points: Ex<br>
 www.xyz.com/api/1.0/addUser <br>
 www.xyz.com/api/1.0/deleteBooks<br>
 www.xyz.com/api/1.0/deleteBooks/123<br>
+```
 
 ## 3. Name the collections using Plural Nouns
 
+```ruby
 API Details: Get a specific user <br>
 Action: GET<br>
 End Points: www.xyz.com/api/1.0/users/123 <br>  Just remember dont use "user". Its "users"
@@ -49,9 +55,10 @@ End Points: www.xyz.com/api/1.0/users/123 <br>  Just remember dont use "user". I
 API Details: Delete specific User <br>
 Action: DELETE<br>
 End Points: www.xyz.com/api/1.0/users/123/ <br>
+```
 
 ## 4. Use resource nesting
-
+```ruby
 API Details: Get Users all Orders <br>
 Action: GET<br>
 End Points: www.xyz.com/api/1.0/users/123/orders <br>
@@ -59,6 +66,7 @@ End Points: www.xyz.com/api/1.0/users/123/orders <br>
 API Details: Get Users Specific Orders <br>
 Action: GET<br>
 End Points: www.xyz.com/api/1.0/users/123/orders/o123 <br>
+```
 
 ## 5. Error Handling
 
@@ -71,6 +79,7 @@ End Points: www.xyz.com/api/1.0/users/123/orders/o123 <br>
 
 All these are done on collections. <br>
 
+```ruby
 Ex. <br>
 API Details: Filter based on language<br>
 URI: www.bookmyshow.com/api/1.0/filim <br>
@@ -79,7 +88,7 @@ Query Param: language : English <br>
              limit : 5 - limit to 5 records <br>
              sort : sort the records on release date or sort based on theater or sort based on name ascending or descending order etc. <br>
              paging : start offset and limit of records etc. <br>
-
+```
 ## 7. Versioning
 
 Version could 1.0, v1, release date or Sprint release number etc.<br>
