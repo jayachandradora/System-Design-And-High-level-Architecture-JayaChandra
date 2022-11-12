@@ -65,7 +65,7 @@ E1, E2, … E-n are the employees generating coupons**
  ## ** Deep Dive: **
 
 - Coupon Generation Service: Responsible for generating new coupons in the system. Employees would create new coupons in the system. This service would get the coupon details from employee, get the coupon code from Key Generation Service and store the corresponding data in clustered Coupon table (to master node)
-- 
+
 - Key Generation Service: Responsible for generating unique id’s/coupon-code to be used in the system. Can use Twitter SnowFlake approach to generate 64bit unique id’s.
 *|| 1bit reserved || 41 bits: timestamp || 5 bits: datacenter id || 5 bits: machine id || 12 bits: sequence number ||
 
