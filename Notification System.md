@@ -1,5 +1,14 @@
 # Notification System Design 
 
+![image](https://user-images.githubusercontent.com/115500959/201484751-cc1c7e2a-c4b1-4fd0-8d46-487c94754de7.png)
+
+## Problem Statement:
+
+1. Single Point of failure
+2. Server overloaded
+3. Message lost
+4. Deficult to scal
+
 ![image](https://user-images.githubusercontent.com/115500959/201484524-e3fc0e1f-818a-4904-8544-56418cdbf9cf.png)
 
 ![image](https://user-images.githubusercontent.com/115500959/201484601-1a963c80-96d9-472a-b51a-81ab688bd1af.png)
