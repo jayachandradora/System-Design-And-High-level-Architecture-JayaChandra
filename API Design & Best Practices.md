@@ -3,6 +3,9 @@ Software Design Architecture - High Level Design
 
 
 How does REST API work? What are its principles, methods, constraints, and best practices? I hope the diagram below gives you a quick overview.
+
+https://blog.devgenius.io/best-practice-and-cheat-sheet-for-rest-api-design-6a6e12dfa89f
+
 ![image](https://user-images.githubusercontent.com/115500959/206842157-9db66e60-f3ab-4eb9-ab91-98c7b1214800.png)
 
 # API Design & Best Practices
