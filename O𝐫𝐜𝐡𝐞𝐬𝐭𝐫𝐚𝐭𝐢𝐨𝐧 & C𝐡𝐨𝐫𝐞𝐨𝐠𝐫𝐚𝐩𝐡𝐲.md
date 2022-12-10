@@ -13,15 +13,15 @@ Choreography is like having a choreographer set all the rules. Then the dancers 
 
 Orchestration is different. The orchestrator acts as a center of authority. It is responsible for invoking and combining the services. It describes the interactions between all the participating services. It is just like a conductor leading the musicians in a musical symphony. The orchestration pattern also includes the transaction management among different services.
 
-**The benefits of orchestration:**
-**1. Reliability -** orchestration has built-in transaction management and error handling, while choreography is point-to-point communications and the fault tolerance scenarios are much more complicated.
+**The benefits of orchestration:** <br>
+**1. Reliability -** orchestration has built-in transaction management and error handling, while choreography is point-to-point communications and the fault tolerance scenarios are much more complicated. <br>
 **2. Scalability -** when adding a new service into orchestration, only the orchestrator needs to modify the interaction rules, while in choreography all the interacting services need to be modified.
 
-**Some limitations of orchestration:**
-**1. Performance -** all the services talk via a centralized orchestrator, so latency is higher than it is with choreography. Also, the throughput is bound to the capacity of the orchestrator.
-**2. Single point of failure -** if the orchestrator goes down, no services can talk to each other. To mitigate this, the orchestrator must be highly available.
+**Some limitations of orchestration:** <br>
+**1. Performance -** all the services talk via a centralized orchestrator, so latency is higher than it is with choreography. Also, the throughput is bound to the capacity of the orchestrator. <br>
+**2. Single point of failure -** if the orchestrator goes down, no services can talk to each other. To mitigate this, the orchestrator must be highly available.<br>
 
-Real-world use case: Netflix Conductor is a microservice orchestrator and you can read more details on the orchestrator design.
+**Real-world use case:* Netflix Conductor is a microservice orchestrator and you can read more details on the orchestrator design.
 
 
 ![image](https://user-images.githubusercontent.com/115500959/206841373-ffcb362e-a488-4af1-9e2e-b33bb1569260.png)
