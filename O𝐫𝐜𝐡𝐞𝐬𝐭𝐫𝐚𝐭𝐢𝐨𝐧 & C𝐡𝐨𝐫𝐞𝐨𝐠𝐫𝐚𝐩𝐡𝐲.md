@@ -23,7 +23,7 @@ Orchestration is different. The orchestrator acts as a center of authority. It i
 
 **2. Single point of failure -** if the orchestrator goes down, no services can talk to each other. To mitigate this, the orchestrator must be highly available.<br>
 
-**Real-world use case:* Netflix Conductor is a microservice orchestrator and you can read more details on the orchestrator design.
+**Real-world use case:** Netflix Conductor is a microservice orchestrator and you can read more details on the orchestrator design.
 
 
 ![image](https://user-images.githubusercontent.com/115500959/206841373-ffcb362e-a488-4af1-9e2e-b33bb1569260.png)
