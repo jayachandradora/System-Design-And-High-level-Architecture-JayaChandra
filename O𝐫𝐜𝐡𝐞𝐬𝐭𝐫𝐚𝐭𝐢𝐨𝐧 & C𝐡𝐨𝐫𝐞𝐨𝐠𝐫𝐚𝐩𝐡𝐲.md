@@ -1,5 +1,7 @@
 # O𝐫𝐜𝐡𝐞𝐬𝐭𝐫𝐚𝐭𝐢𝐨𝐧 and C𝐡𝐨𝐫𝐞𝐨𝐠𝐫𝐚𝐩𝐡𝐲
 
+![image](https://user-images.githubusercontent.com/115500959/206921954-3c44c5e0-8e55-458d-a2ca-6841643bb555.png)
+
 
 ## Details Of 𝐨𝐫𝐜𝐡𝐞𝐬𝐭𝐫𝐚𝐭𝐢𝐨𝐧 and 𝐜𝐡𝐨𝐫𝐞𝐨𝐠𝐫𝐚𝐩𝐡𝐲
 
@@ -27,3 +29,20 @@ Orchestration is different. The orchestrator acts as a center of authority. It i
 
 
 ![image](https://user-images.githubusercontent.com/115500959/206841373-ffcb362e-a488-4af1-9e2e-b33bb1569260.png)
+
+## **SAGA Pattern -** 
+
+SAGA pattern is nothing but Co-ordination techniqueue(Orchestration Techniqueue or Coreography Techniqueue).
+
+### Orchestration Techniqueue
+
+This Technique we can solve via two channels 
+1. Command Channel
+2. Reply Channel
+
+![image](https://user-images.githubusercontent.com/115500959/206921862-3f1a4fb7-d430-4f01-8264-532c5a5992aa.png)
+
+### Choreography Techniqueue
+
+![image](https://user-images.githubusercontent.com/115500959/206921786-228d3ab9-b726-45ef-9b9d-e409a3d5d812.png)
+
