@@ -58,3 +58,5 @@ This Technique we can solve via two channels
 
 
 https://www.youtube.com/watch?v=FQdpvNOMcSY&list=PLyRIF55NSlCZisaM8siA1QE4E-YzPMKfu&ab_channel=SPSTech
+https://www.youtube.com/watch?v=YGnpHZcuMOo&ab_channel=Saggu
+https://www.youtube.com/watch?v=J3sh3IeLFh0&ab_channel=Saggu
