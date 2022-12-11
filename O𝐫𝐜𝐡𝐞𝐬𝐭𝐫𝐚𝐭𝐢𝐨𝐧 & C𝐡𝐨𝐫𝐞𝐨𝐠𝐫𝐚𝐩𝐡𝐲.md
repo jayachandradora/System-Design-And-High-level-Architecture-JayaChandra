@@ -40,10 +40,17 @@ This Technique we can solve via two channels
 1. Command Channel
 2. Reply Channel
 
+**Sync Communication**
+![image](https://user-images.githubusercontent.com/115500959/206922256-f3f4ab4b-f248-42a4-8e50-6f706152ee4d.png)
+
+**Async Communication**
 ![image](https://user-images.githubusercontent.com/115500959/206921862-3f1a4fb7-d430-4f01-8264-532c5a5992aa.png)
 
 ### Choreography Techniqueue
+**Sync Communication**
 
+
+**Async Communication**
 ![image](https://user-images.githubusercontent.com/115500959/206921786-228d3ab9-b726-45ef-9b9d-e409a3d5d812.png)
 
 
