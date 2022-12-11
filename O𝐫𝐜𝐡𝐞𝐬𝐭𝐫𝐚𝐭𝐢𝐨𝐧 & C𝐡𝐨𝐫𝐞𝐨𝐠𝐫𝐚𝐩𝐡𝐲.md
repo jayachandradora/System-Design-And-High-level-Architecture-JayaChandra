@@ -16,7 +16,7 @@ Orchestration is different. The orchestrator acts as a center of authority. It i
 **The benefits of orchestration:** <br>
 **1. Reliability -** orchestration has built-in transaction management and error handling, while choreography is point-to-point communications and the fault tolerance scenarios are much more complicated. <br>
 
-**2. Scalability -** when adding a new service into orchestration, only the orchestrator needs to modify the interaction rules, while in choreography all the interacting services need to be modified.<br><br>
+**2. Scalability -** when adding a new service into orchestration, only the orchestrator needs to modify the interaction rules, while in choreography all the interacting services need to be modified.<br>
 
 **Some limitations of orchestration:** <br>
 **1. Performance -** all the services talk via a centralized orchestrator, so latency is higher than it is with choreography. Also, the throughput is bound to the capacity of the orchestrator. <br>
