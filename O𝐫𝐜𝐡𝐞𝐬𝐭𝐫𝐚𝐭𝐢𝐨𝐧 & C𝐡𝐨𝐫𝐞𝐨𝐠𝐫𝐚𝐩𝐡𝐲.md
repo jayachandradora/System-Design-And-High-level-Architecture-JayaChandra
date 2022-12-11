@@ -47,8 +47,11 @@ This Technique we can solve via two channels
 ![image](https://user-images.githubusercontent.com/115500959/206921862-3f1a4fb7-d430-4f01-8264-532c5a5992aa.png)
 
 ### Choreography Techniqueue
-**Sync Communication**
+**Sync Communication Happy Flow**
+![image](https://user-images.githubusercontent.com/115500959/206922528-9af3ba4a-af20-49b7-be4d-7c69e7478af1.png)
 
+**Sync Communication Failure Flow - Rollbacking Entire Transaction** 
+![image](https://user-images.githubusercontent.com/115500959/206922667-8a5be74f-faef-40ca-b752-8754c205e027.png)
 
 **Async Communication**
 ![image](https://user-images.githubusercontent.com/115500959/206921786-228d3ab9-b726-45ef-9b9d-e409a3d5d812.png)
