@@ -46,3 +46,5 @@ This Technique we can solve via two channels
 
 ![image](https://user-images.githubusercontent.com/115500959/206921786-228d3ab9-b726-45ef-9b9d-e409a3d5d812.png)
 
+
+https://www.youtube.com/watch?v=FQdpvNOMcSY&list=PLyRIF55NSlCZisaM8siA1QE4E-YzPMKfu&ab_channel=SPSTech
