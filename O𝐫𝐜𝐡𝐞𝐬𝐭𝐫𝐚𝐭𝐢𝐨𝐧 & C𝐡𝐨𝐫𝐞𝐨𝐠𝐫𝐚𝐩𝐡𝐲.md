@@ -51,7 +51,7 @@ This Technique we can solve via two channels
 ![image](https://user-images.githubusercontent.com/115500959/206922528-9af3ba4a-af20-49b7-be4d-7c69e7478af1.png)
 
 **Sync Communication Failure Flow - Rollbacking Entire Transaction** 
-![image](https://user-images.githubusercontent.com/115500959/206922667-8a5be74f-faef-40ca-b752-8754c205e027.png)
+![image](https://user-images.githubusercontent.com/115500959/206923274-3e7e5b13-a5f4-429c-ae0a-3a33f75363b4.png)
 
 **Async Communication**
 ![image](https://user-images.githubusercontent.com/115500959/206921786-228d3ab9-b726-45ef-9b9d-e409a3d5d812.png)
