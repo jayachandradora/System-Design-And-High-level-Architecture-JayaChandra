@@ -1,5 +1,7 @@
 Designing a capacity estimation for an Ad Click Counter & Aggregator system involves assessing the expected workload, data volumes, and system requirements. Here’s a structured approach to estimating the capacity:
 
+Please Follow this Link : https://medium.com/@nvedansh/system-design-ad-click-event-aggregation-8fb6aa7817fc
+
 ### System Components and Requirements:
 
 1. **Event Ingestion**:
