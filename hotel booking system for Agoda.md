@@ -52,6 +52,71 @@ Designing a hotel booking system for Agoda involves considering both functional 
    - **Monitoring**: Implement monitoring tools for performance metrics, error logs, and system health checks.
    - **Regular Updates**: Plan for regular updates and maintenance to improve functionality and security.
 
+## Estimating the capacity
+
+Estimating the capacity for Agoda's system design involves assessing various factors to ensure the platform can handle expected traffic, data volumes, and user interactions efficiently. Here’s an outline of capacity estimation considerations:
+
+### Traffic Volume:
+
+1. **Expected User Base**:
+   - Determine the number of active users visiting Agoda's platform daily, weekly, and during peak periods (e.g., holiday seasons).
+   - Estimate concurrent users accessing the system simultaneously.
+
+2. **Page Views and Requests**:
+   - Calculate the number of page views per user session.
+   - Estimate the number of API requests and database queries per second.
+
+### Data Storage:
+
+1. **Transactional Data**:
+   - Estimate the size and growth rate of transactional data (e.g., user profiles, bookings, payments).
+   - Determine daily, weekly, and monthly data ingestion rates.
+
+2. **Content Storage**:
+   - Assess storage requirements for multimedia content (e.g., hotel images, reviews).
+   - Plan for scalability to accommodate increasing content volume.
+
+### Processing and Compute Requirements:
+
+1. **Compute Resources**:
+   - Estimate CPU and memory requirements based on anticipated workload.
+   - Consider distributed computing for handling concurrent requests and data processing.
+
+2. **Database Throughput**:
+   - Calculate read and write throughput for databases (e.g., MySQL, NoSQL) based on transaction rates and query complexity.
+   - Implement caching strategies (e.g., Redis, Memcached) for frequently accessed data.
+
+### Networking and Infrastructure:
+
+1. **Bandwidth Requirements**:
+   - Determine bandwidth needs for data transfer between servers, clients, and external services (e.g., payment gateways, hotel APIs).
+
+2. **Network Latency**:
+   - Assess network latency requirements to ensure responsive user experience, especially for global users.
+
+### Scalability and Elasticity:
+
+1. **Scaling Strategy**:
+   - Plan for horizontal scaling using cloud services (e.g., AWS, Azure) to accommodate traffic spikes and future growth.
+   - Implement auto-scaling policies based on predefined metrics (e.g., CPU utilization, request rate).
+
+2. **High Availability**:
+   - Design for fault tolerance and redundancy to minimize downtime and ensure continuous service availability.
+   - Use load balancers and failover mechanisms to distribute traffic and mitigate single points of failure.
+
+### Monitoring and Optimization:
+
+1. **Monitoring Tools**:
+   - Implement monitoring solutions (e.g., Prometheus, Nagios) for real-time performance metrics, resource utilization, and system health.
+
+2. **Optimization Strategies**:
+   - Continuously optimize code, database queries, and infrastructure configurations to improve efficiency and reduce costs.
+   - Conduct load testing and performance tuning exercises to validate capacity estimates and identify bottlenecks.
+
+### Conclusion:
+
+Capacity estimation for Agoda's system design involves a detailed assessment of traffic patterns, data storage requirements, compute resources, networking needs, scalability strategies, and monitoring practices. By accurately estimating these factors, Agoda can build and maintain a robust, scalable platform that delivers a seamless and responsive user experience while handling varying levels of demand and growth.
+
 ### Design Aspects:
 
 1. **System Architecture**:
