@@ -119,6 +119,9 @@ Capacity estimation for Agoda's system design involves a detailed assessment of 
 
 ### Design Aspects:
 
+![image](https://github.com/jayachandradora/System-Design-And-High-level-Architecture-JayaChandra/assets/115500959/c67bd4ee-0adc-4082-a3c5-6f7e77449e9f)
+
+
 1. **System Architecture**:
    - **Microservices**: Design modular components for scalability and independent deployment.
    - **Service-Oriented Architecture (SOA)**: Use services like booking service, user management, payment service, etc., communicating through APIs.
