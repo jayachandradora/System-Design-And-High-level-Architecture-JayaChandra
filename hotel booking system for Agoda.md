@@ -117,7 +117,7 @@ Estimating the capacity for Agoda's system design involves assessing various fac
 
 Capacity estimation for Agoda's system design involves a detailed assessment of traffic patterns, data storage requirements, compute resources, networking needs, scalability strategies, and monitoring practices. By accurately estimating these factors, Agoda can build and maintain a robust, scalable platform that delivers a seamless and responsive user experience while handling varying levels of demand and growth.
 
-### Design Aspects:
+### Design Aspects: https://medium.com/nerd-for-tech/system-design-architecture-for-hotel-booking-apps-like-airbnb-oyo-6efb4f4dddd7
 
 ![image](https://github.com/jayachandradora/System-Design-And-High-level-Architecture-JayaChandra/assets/115500959/c67bd4ee-0adc-4082-a3c5-6f7e77449e9f)
 
