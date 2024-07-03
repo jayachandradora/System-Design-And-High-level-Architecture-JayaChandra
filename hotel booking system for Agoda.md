@@ -52,6 +52,126 @@ Designing a hotel booking system for Agoda involves considering both functional 
    - **Monitoring**: Implement monitoring tools for performance metrics, error logs, and system health checks.
    - **Regular Updates**: Plan for regular updates and maintenance to improve functionality and security.
 
+Designing a hotel booking system involves creating APIs for managing bookings, availability, and user interactions, as well as designing a database schema to store relevant information efficiently. Here's a structured approach to designing both the API and database for a hotel booking system:
+
+### API Design
+
+#### 1. Hotel Search API
+
+- **Endpoint**: `/api/hotels/search`
+- **HTTP Method**: GET
+- **Parameters**:
+  - `checkin_date`: Date of check-in.
+  - `checkout_date`: Date of check-out.
+  - `location`: Location or city.
+  - Optionally: `guests`, `rooms`, `price_range`, etc.
+
+- **Response**:
+  ```json
+  {
+    "hotels": [
+      {
+        "hotel_id": "123",
+        "name": "Hotel ABC",
+        "location": "City A",
+        "description": "Description of the hotel.",
+        "rating": 4.5,
+        "reviews": 100,
+        "price_per_night": 150,
+        "availability": {
+          "available_rooms": 5,
+          "total_rooms": 10
+        }
+      },
+      // More hotels
+    ]
+  }
+  ```
+
+#### 2. Hotel Booking API
+
+- **Endpoint**: `/api/bookings/create`
+- **HTTP Method**: POST
+- **Request Payload**:
+  ```json
+  {
+    "hotel_id": "123",
+    "user_id": "456",
+    "checkin_date": "2024-07-01",
+    "checkout_date": "2024-07-05",
+    "guests": 2,
+    "rooms": 1,
+    "total_price": 750
+  }
+  ```
+- **Response**: HTTP status code (e.g., 200 OK, 400 Bad Request).
+
+#### 3. User Management API
+
+- **Endpoint**: `/api/users/:user_id`
+- **HTTP Methods**: GET, PUT, DELETE
+- **Response**:
+  ```json
+  {
+    "user_id": "456",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "+1234567890",
+    // Additional user information
+  }
+  ```
+
+### Database Design
+
+#### 1. Hotels Table
+
+- **Table Name**: `hotels`
+- **Columns**:
+  - `hotel_id`: Unique identifier (primary key).
+  - `name`: Hotel name.
+  - `location`: Hotel location.
+  - `description`: Description of the hotel.
+  - `rating`: Average rating given by users.
+  - `reviews`: Number of reviews received.
+  - `price_per_night`: Base price per night.
+  - `total_rooms`: Total number of rooms.
+  - `created_at`, `updated_at`: Timestamps for record creation and updates.
+
+#### 2. Bookings Table
+
+- **Table Name**: `bookings`
+- **Columns**:
+  - `booking_id`: Unique identifier (primary key).
+  - `hotel_id`: Foreign key reference to `hotels` table.
+  - `user_id`: Foreign key reference to `users` table.
+  - `checkin_date`, `checkout_date`: Dates of stay.
+  - `guests`: Number of guests.
+  - `rooms`: Number of rooms booked.
+  - `total_price`: Total price for the booking.
+  - `booking_status`: Status of the booking (confirmed, cancelled, etc.).
+  - `created_at`, `updated_at`: Timestamps for booking creation and updates.
+
+#### 3. Users Table
+
+- **Table Name**: `users`
+- **Columns**:
+  - `user_id`: Unique identifier (primary key).
+  - `first_name`, `last_name`: User's name.
+  - `email`: User's email address.
+  - `phone`: User's phone number.
+  - `created_at`, `updated_at`: Timestamps for user creation and updates.
+
+### Considerations
+
+- **Data Relationships**: Maintain foreign key relationships between tables for data integrity.
+- **Indexing**: Index columns used frequently in queries (e.g., `hotel_id`, `user_id`, `checkin_date`) to optimize performance.
+- **Concurrency**: Implement locking mechanisms or optimistic concurrency control to manage concurrent bookings and updates.
+- **Security**: Secure APIs with authentication (e.g., OAuth, JWT) and enforce authorization rules.
+- **Scalability**: Design for horizontal scaling to handle increasing numbers of users, hotels, and bookings.
+
+By following this structured approach, you can create a robust and scalable hotel booking system that efficiently handles hotel searches, bookings, and user management, ensuring a seamless experience for both customers and administrators. Adjust the schema and APIs based on specific business requirements and scalability considerations.
+
 ## Estimating the capacity
 
 Estimating the capacity for Agoda's system design involves assessing various factors to ensure the platform can handle expected traffic, data volumes, and user interactions efficiently. Here’s an outline of capacity estimation considerations:
