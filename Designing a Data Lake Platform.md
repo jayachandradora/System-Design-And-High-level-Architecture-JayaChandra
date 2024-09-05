@@ -39,8 +39,21 @@ A data lake platform provides a centralized repository for storing large amounts
 
 ## Data Lake Architecture
 
+A data lake architecture can accommodate unstructured data and different data structures from multiple sources across the organization. All data lakes have two components, storage and compute, and they can both be located on-premises or based in the cloud. The data lake architecture can use a combination of cloud and on-premises locations.
+
+It is difficult to measure the volume of data that will need to be accommodated by a data lake. For this reason, data lake architecture provides expanded scalability, as high as an exabyte, a feat a conventional storage system is not capable of. Data should be tagged with metadata during its application into the data lake to ensure future accessibility.
+
 ![image](https://github.com/user-attachments/assets/4a4a2189-0053-4d9c-abcf-ff2096fbde6e)
 
+Data lakes software such as Hadoop and Amazon Simple Storage Service (Amazon S3) vary in terms of structure and strategy. Data lake architecture software organizes data in a data lake and makes it easier to access and use. The following features should be incorporated in a data lake architecture to prevent the development of a data swamp and ensure data lake functionality.
+
+Utilization of data profiling tools proffers insights into the classification of data objects and implementing data quality control
+Taxonomy of data classification includes user scenarios and possible user groups, content, and data type
+File hierarchy with naming conventions
+Tracking mechanism on data lake user access together with a generated alert signal at the point and time of access
+Data catalog search functionality
+Data security that encompasses data encryption, access control, authentication, and other data security tools to prevent unauthorized access
+Data lake usage training and awareness
 
 ## Hadoop Data Lakes Architecture
 
