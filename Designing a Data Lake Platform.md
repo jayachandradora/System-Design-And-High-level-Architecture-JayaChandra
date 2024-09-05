@@ -57,6 +57,13 @@ Data lake usage training and awareness
 
 ## Hadoop Data Lakes Architecture
 
+We have singled out illustrating Hadoop data lake infrastructure as an example. Some data lake architecture providers use a Hadoop-based data management platform consisting of one or more Hadoop clusters. Hadoop uses a cluster of distributed servers for data storage. The Hadoop ecosystem comprises three main core elements:
+
+* **Hadoop Distributed File System (HDFS) –** The storage layer whose function is storing and replicating data across multiple servers.
+* **Yet Another Resource Negotiator (YARN) –** Resource management tool
+* **MapReduce –** The programming model for splitting data into smaller subsections before processing in servers
+
+
 ![image](https://github.com/user-attachments/assets/4f0dab25-aa83-4e28-85bd-28ae64020548)
 
 
