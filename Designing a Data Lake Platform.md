@@ -36,7 +36,18 @@ A data lake platform provides a centralized repository for storing large amounts
 
 ### Example Architecture
 
-[Image of a data lake architecture diagram]
+![image](https://github.com/user-attachments/assets/ccfab845-4bf2-49e1-b688-97655d14619e)
+
+
+## Data Lake Architecture
+
+![image](https://github.com/user-attachments/assets/4a4a2189-0053-4d9c-abcf-ff2096fbde6e)
+
+
+## Hadoop Data Lakes Architecture
+
+![image](https://github.com/user-attachments/assets/4f0dab25-aa83-4e28-85bd-28ae64020548)
+
 
 A typical data lake architecture might include:
 
