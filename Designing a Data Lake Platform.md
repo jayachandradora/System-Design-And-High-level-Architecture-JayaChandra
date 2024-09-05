@@ -63,9 +63,11 @@ We have singled out illustrating Hadoop data lake infrastructure as an example. 
 * **Yet Another Resource Negotiator (YARN) –** Resource management tool
 * **MapReduce –** The programming model for splitting data into smaller subsections before processing in servers
 
+Hadoop supplementary tools include Pig, Hive, Sqoop, and Kafka. The tools assist in the processes of ingestion, preparation, and extraction. Hadoop can be combined with cloud enterprise platforms to offer a cloud-based data lake infrastructure.
 
 ![image](https://github.com/user-attachments/assets/4f0dab25-aa83-4e28-85bd-28ae64020548)
 
+Hadoop is an open-source technology that makes it less expensive to use. Several ETL tools are available for integration with Hadoop. It is easy to scale and provides faster computation due to its data locality, which has increased its popularity and familiarity among most technology users.
 
 A typical data lake architecture might include:
 
