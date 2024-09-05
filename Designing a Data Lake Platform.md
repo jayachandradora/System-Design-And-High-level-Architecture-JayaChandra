@@ -1,5 +1,7 @@
 ## Designing a Data Lake Platform
 
+![image](https://github.com/user-attachments/assets/ccfab845-4bf2-49e1-b688-97655d14619e)
+
 A data lake platform provides a centralized repository for storing large amounts of structured and unstructured data in its raw format. This allows for flexible analysis and exploration of the data. Here's a breakdown of key components and considerations when designing a data lake platform:
 
 ### Core Components
@@ -33,10 +35,6 @@ A data lake platform provides a centralized repository for storing large amounts
 5. **Security:** Implement robust security measures to protect sensitive data.
 6. **Governance:** Establish data governance policies to manage data lifecycle, quality, and compliance.
 7. **Integration:** Integrate with other systems and tools for seamless data flow and analysis.
-
-### Example Architecture
-
-![image](https://github.com/user-attachments/assets/ccfab845-4bf2-49e1-b688-97655d14619e)
 
 
 ## Data Lake Architecture
@@ -102,6 +100,9 @@ A typical data lake architecture might include:
 * **Data Lakes as a Service:** Explore managed data lake services offered by cloud providers for simplified management and scalability.
 
 **Note:** This is a general flow diagram, and the specific components and processes may vary depending on your organization's requirements and technology stack.
+
+##### Fore more information we can read blog : https://corporatefinanceinstitute.com/resources/data-science/data-lake/
+
 
 
 **Remember:** The specific components and architecture may vary depending on your organization's needs and preferences. It's essential to evaluate different options and choose the best fit for your use case.
