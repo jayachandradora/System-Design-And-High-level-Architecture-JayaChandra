@@ -24,6 +24,9 @@
 
 # Handling a fanout message
 
+<img width="937" alt="image" src="https://github.com/user-attachments/assets/eee8ef0c-a45f-4567-8f74-03ebb1a36e6b">
+
+
 Handling a fanout message to send notifications, such as when a celebrity posts a message to all their followers, can be effectively managed using several strategies. Here’s an outline of best practices and approaches:
 
 ### 1. **Message Queue or Streaming Platform**
