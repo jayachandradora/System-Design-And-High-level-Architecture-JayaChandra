@@ -74,4 +74,8 @@ Handling a fanout message to send notifications, such as when a celebrity posts 
 
 By employing these strategies, you can effectively manage fanout messaging for notification services, ensuring timely and efficient delivery to followers of celebrities or any other entities in your application.
 
+### Fanout message
+
+<img width="937" alt="image" src="https://github.com/user-attachments/assets/f905a1b8-5945-4468-84cb-3571fb9c4441">
+
 
