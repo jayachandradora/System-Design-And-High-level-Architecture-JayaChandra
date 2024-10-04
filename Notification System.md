@@ -76,6 +76,10 @@ By employing these strategies, you can effectively manage fanout messaging for n
 
 ### Fanout message
 
+When a celebrity posts a message, the publisher sends it to the corresponding celebrity topic. A fanout service then reads these messages and collects user data from various databases, including a graph database, user database, preference database (for opt-outs), and an infinity database (which stores information about messages received by consumers each day).
+
+The service aggregates this data and categorizes it based on priority levels (P0, P1, P2, P3, etc.) to determine how to send the messages effectively.
+
 <img width="937" alt="image" src="https://github.com/user-attachments/assets/f905a1b8-5945-4468-84cb-3571fb9c4441">
 
 
