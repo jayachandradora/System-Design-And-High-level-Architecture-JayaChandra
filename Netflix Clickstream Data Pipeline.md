@@ -1,4 +1,4 @@
-# Netflix API architecture
+# Netflix Clickstream Data Pipeline
 
 The Netflix API architecture went through 4 main stages. 
 
