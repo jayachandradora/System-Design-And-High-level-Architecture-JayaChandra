@@ -53,7 +53,10 @@ A Netflix Clickstream Data Pipeline is responsible for collecting, processing, a
 
 ### Example Architecture
 
-[Image of a Netflix Clickstream Data Pipeline architecture]
+![image](https://github.com/user-attachments/assets/06c0e6b8-6ff2-40cc-b461-2d981bdfb817)
+
+**Follow the Design Details**
+https://zhenzhongxu.com/the-four-innovation-phases-of-netflixs-trillions-scale-real-time-data-infrastructure-2370938d7f01
 
 A typical pipeline might include:
 
