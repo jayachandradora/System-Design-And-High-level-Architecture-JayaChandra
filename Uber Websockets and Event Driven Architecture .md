@@ -31,5 +31,14 @@
 
 <img width="1778" alt="image" src="https://github.com/user-attachments/assets/c598021a-3c75-4b3d-b3ba-de07a2bdd5eb">
 
+## Database Design
+<img width="1778" alt="image" src="https://github.com/user-attachments/assets/3dc339cc-ca0a-44dc-bcdd-4a6f4652868f">
+
+<img width="1778" alt="image" src="https://github.com/user-attachments/assets/8aa2a57b-a22f-4454-93ae-d324852935f2">
+
+<img width="1778" alt="image" src="https://github.com/user-attachments/assets/27a06854-8178-43b5-b9c6-9ed962d72e4d">
+
+
+
 
 
