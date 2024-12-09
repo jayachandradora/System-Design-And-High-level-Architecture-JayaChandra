@@ -341,12 +341,34 @@ public class SimilarProductsSpout extends BaseRichSpout {
 This bolt processes purchase history data and applies a collaborative filtering model (e.g., Matrix Factorization, KNN) to generate recommendations.
 
 ```java
+import backtype.storm.task.TopologyContext;
+import backtype.storm.tuple.Tuple;
+import backtype.storm.tuple.Values;
+import backtype.storm.spout.BaseRichSpout;
+import backtype.storm.bolt.BaseRichBolt;
+import backtype.storm.outputcollector.OutputCollector;
+
+import java.util.*;
+import org.apache.commons.math3.linear.*;
+
 public class CollaborativeFilteringBolt extends BaseRichBolt {
     private OutputCollector collector;
+    
+    // A mock user-item interaction matrix
+    private Map<String, Map<String, Integer>> userProductMatrix;
 
     @Override
     public void prepare(Map<String, Object> config, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
+
+        // Initialize the user-product interaction matrix (userId -> productId -> rating)
+        // In practice, this should come from a data source like a database or stream of purchase history
+        userProductMatrix = new HashMap<>();
+        
+        // Example data: users and products they've purchased (rating is 1 for simplicity)
+        userProductMatrix.put("user_1", Map.of("product_1", 1, "product_2", 1));
+        userProductMatrix.put("user_2", Map.of("product_2", 1, "product_3", 1));
+        userProductMatrix.put("user_3", Map.of("product_1", 1, "product_3", 1));
     }
 
     @Override
@@ -368,13 +390,99 @@ public class CollaborativeFilteringBolt extends BaseRichBolt {
         collector.ack(input);
     }
 
+    /**
+     * Generates recommendations for the user based on collaborative filtering (KNN-based).
+     *
+     * @param userId the user for whom to generate recommendations
+     * @return a list of recommended product IDs
+     */
     private List<String> getRecommendedProducts(String userId) {
-        // Implement Collaborative Filtering logic (e.g., Matrix Factorization, KNN)
-        // For simplicity, returning dummy recommended products
-        List<String> recommendations = new ArrayList<>();
-        recommendations.add("product_" + (new Random().nextInt(100)));
-        recommendations.add("product_" + (new Random().nextInt(100)));
-        return recommendations;
+        List<String> recommendedProducts = new ArrayList<>();
+
+        // Step 1: Find similar users to the current user (userId)
+        List<String> similarUsers = findSimilarUsers(userId);
+
+        // Step 2: Collect products purchased by similar users but not by the current user
+        Set<String> userPurchasedProducts = new HashSet<>(userProductMatrix.getOrDefault(userId, Collections.emptyMap()).keySet());
+
+        // Step 3: For each similar user, recommend products they have purchased
+        for (String similarUser : similarUsers) {
+            Map<String, Integer> similarUserProducts = userProductMatrix.getOrDefault(similarUser, Collections.emptyMap());
+            for (String product : similarUserProducts.keySet()) {
+                if (!userPurchasedProducts.contains(product) && !recommendedProducts.contains(product)) {
+                    recommendedProducts.add(product);
+                }
+            }
+        }
+
+        return recommendedProducts;
+    }
+
+    /**
+     * Finds the most similar users to the given user based on purchase history.
+     * For simplicity, we'll use cosine similarity to calculate similarity between users.
+     *
+     * @param userId the user for whom to find similar users
+     * @return a list of similar users
+     */
+    private List<String> findSimilarUsers(String userId) {
+        Map<String, Integer> currentUserProducts = userProductMatrix.getOrDefault(userId, Collections.emptyMap());
+        List<String> similarUsers = new ArrayList<>();
+
+        // Step 1: Compute the similarity of the current user with all other users
+        Map<String, Double> userSimilarities = new HashMap<>();
+        for (String otherUserId : userProductMatrix.keySet()) {
+            if (!otherUserId.equals(userId)) {
+                Map<String, Integer> otherUserProducts = userProductMatrix.get(otherUserId);
+                double similarity = calculateCosineSimilarity(currentUserProducts, otherUserProducts);
+                userSimilarities.put(otherUserId, similarity);
+            }
+        }
+
+        // Step 2: Sort users by similarity score (highest similarity first)
+        userSimilarities.entrySet().stream()
+            .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue())) // Sort descending by similarity score
+            .limit(3) // Limit to top 3 most similar users
+            .forEach(entry -> similarUsers.add(entry.getKey()));
+
+        return similarUsers;
+    }
+
+    /**
+     * Calculates cosine similarity between two users' product purchases.
+     *
+     * @param user1Products the product purchase map for the first user
+     * @param user2Products the product purchase map for the second user
+     * @return the cosine similarity between the two users
+     */
+    private double calculateCosineSimilarity(Map<String, Integer> user1Products, Map<String, Integer> user2Products) {
+        // Find common products between the two users
+        Set<String> commonProducts = new HashSet<>(user1Products.keySet());
+        commonProducts.retainAll(user2Products.keySet());
+
+        // If there are no common products, return similarity of 0
+        if (commonProducts.isEmpty()) {
+            return 0;
+        }
+
+        // Calculate the dot product and magnitudes for cosine similarity
+        double dotProduct = 0;
+        double magnitudeUser1 = 0;
+        double magnitudeUser2 = 0;
+
+        for (String product : commonProducts) {
+            dotProduct += user1Products.get(product) * user2Products.get(product);
+        }
+
+        for (String product : user1Products.keySet()) {
+            magnitudeUser1 += Math.pow(user1Products.get(product), 2);
+        }
+
+        for (String product : user2Products.keySet()) {
+            magnitudeUser2 += Math.pow(user2Products.get(product), 2);
+        }
+
+        return dotProduct / (Math.sqrt(magnitudeUser1) * Math.sqrt(magnitudeUser2));
     }
 
     @Override
