@@ -1,4 +1,4 @@
-# Real time product recommendation engine using Apache Storm 
+# Real Time Product Recommendation Engine using Apache Storm 
 
 Building a **real-time product recommendation engine** using **Apache Storm** that integrates **purchase history**, **last viewed products**, **similar products**, and **geolocation data** can be an exciting and complex task. Below is an outline of how this can be structured, including a **machine learning model** to predict recommended products based on purchasing behavior.
 
