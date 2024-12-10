@@ -628,3 +628,227 @@ public class RecommendationAggregatorBolt extends BaseRichBolt {
 - The final **Recommendation Aggregator Bolt** combines all processed recommendations and outputs them to a **Sink** (e.g., database, API).
 
 By following this structure, you can implement a scalable, real-time recommendation engine using **Apache Storm**!
+
+# Incorporate product reviews and ratings into this design to enhance our recommendation system
+
+We can definitely incorporate **product reviews and ratings** into this design to enhance your recommendation system. By adding review and rating data to the data pipeline, you can make the recommendations more personalized and refined. Let's walk through how we can integrate this additional data into the existing **Apache Storm** architecture with a focus on **Java**.
+
+We'll use the review and rating data to improve both **Collaborative Filtering** (by incorporating user feedback) and **Content-Based Filtering** (by considering sentiment or text reviews).
+
+### Key Changes
+1. **Incorporate Product Reviews and Ratings**: You will need to extend the data model to include user reviews, ratings, and perhaps sentiment analysis.
+2. **Modify the Spout**: Adjust the spout to also emit review and rating data in addition to purchases and views.
+3. **Modify the Bolts**: Update the bolts to take reviews and ratings into account when making recommendations.
+4. **ML Models**: You can either:
+   - Integrate ratings data into your collaborative filtering model (e.g., matrix factorization or SVD).
+   - Use sentiment analysis or text-based approaches for content-based filtering with reviews.
+
+### High-Level Flow:
+1. **Spouts** will now consume purchase, view, review, and rating data streams.
+2. **Bolts** will process this data in real time, using collaborative filtering and content-based filtering enhanced by review and rating data.
+3. **Recommendation Logic** will now include review sentiment (e.g., using text mining techniques) and rating scores in real-time.
+
+---
+
+### **Step-by-Step Implementation**
+
+#### 1. **Data Sources** for Reviews and Ratings
+
+In the system, reviews and ratings could be stored in a database or streaming platform (e.g., **Kafka**). Each review could contain:
+
+- `user_id`: The ID of the user.
+- `product_id`: The ID of the product.
+- `rating`: Numerical rating (e.g., 1-5 stars).
+- `review_text`: The textual content of the review.
+- `timestamp`: The time when the review was posted.
+
+For simplicity, here’s how the data schema could look for reviews:
+
+```json
+{
+  "user_id": "user123",
+  "product_id": "product456",
+  "rating": 4.5,
+  "review_text": "Great product, very useful!",
+  "timestamp": "2024-12-09T10:30:00Z"
+}
+```
+
+#### 2. **Modify the Spout to Consume Reviews and Ratings**
+
+You will need to modify the spout to ingest review and rating data alongside purchase and view events. Here's how the spout would look for this.
+
+```java
+import org.apache.storm.spout.SpoutOutputCollector;
+import org.apache.storm.topology.BaseRichSpout;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Values;
+
+public class ReviewRatingSpout extends BaseRichSpout {
+    private SpoutOutputCollector collector;
+
+    @Override
+    public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
+        this.collector = collector;
+    }
+
+    @Override
+    public void nextTuple() {
+        // Fetch real-time review and rating data (from Kafka, DB, etc.)
+        String userId = "user123"; // Example user ID
+        String productId = "product456"; // Example product ID
+        double rating = 4.5; // Example rating
+        String reviewText = "Great product, very useful!"; // Example review text
+        String timestamp = "2024-12-09T10:30:00Z"; // Example timestamp
+
+        // Emit review data to bolts for processing
+        collector.emit(new Values(userId, productId, rating, reviewText, timestamp));
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("userId", "productId", "rating", "reviewText", "timestamp"));
+    }
+}
+```
+
+#### 3. **Modify the Collaborative Filtering Bolt**
+
+You will need to modify the collaborative filtering bolt to consider ratings along with purchases and views. For example, when applying collaborative filtering, the **rating** can help to weigh the strength of interactions between users and products.
+
+Here's an updated bolt that integrates **ratings**:
+
+```java
+import org.apache.storm.topology.BaseBasicBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.mahout.cf.taste.recommender.RecommendedItem;
+import org.apache.mahout.cf.taste.impl.recommender.SlopeOneRecommender;
+import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
+import org.apache.mahout.cf.taste.model.DataModel;
+import java.io.File;
+import java.util.List;
+
+public class CollaborativeFilteringWithRatingsBolt extends BaseBasicBolt {
+    private SlopeOneRecommender recommender;
+
+    @Override
+    public void prepare(Map stormConf, TopologyContext context) {
+        try {
+            // Load user-item interaction data (including ratings)
+            File dataFile = new File("user_item_interactions_with_ratings.csv");
+            DataModel model = new FileDataModel(dataFile);
+            recommender = new SlopeOneRecommender(model);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void execute(Tuple tuple) {
+        String userId = tuple.getStringByField("userId");
+        String productId = tuple.getStringByField("productId");
+        double rating = tuple.getDoubleByField("rating");
+
+        try {
+            // Get recommendations based on the collaborative filtering model
+            List<RecommendedItem> recommendations = recommender.recommend(Integer.parseInt(userId), 5);
+            // Use the rating data in the recommendation logic (e.g., weighted by rating)
+            for (RecommendedItem recommendation : recommendations) {
+                System.out.println("Recommended Product: " + recommendation.getItemID() + " with rating " + rating);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("userId", "recommendedProducts"));
+    }
+}
+```
+
+#### 4. **Integrating Reviews for Content-Based Filtering**
+
+To incorporate reviews into content-based filtering, you can use **Natural Language Processing (NLP)** to analyze review text and extract valuable features like sentiment, keywords, or topics. One simple approach could be to calculate the sentiment score of a review and use that in combination with other product metadata (e.g., category, description).
+
+Here's a basic example using **Apache OpenNLP** for sentiment analysis:
+
+```java
+import org.apache.storm.topology.BaseBasicBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.opennlp.tools.sentiment.SentimentModel;
+import org.apache.opennlp.tools.sentiment.SentimentAnalysisTool;
+
+public class ContentBasedWithSentimentBolt extends BaseBasicBolt {
+    private SentimentAnalysisTool sentimentAnalysisTool;
+
+    @Override
+    public void prepare(Map stormConf, TopologyContext context) {
+        try {
+            // Load a sentiment analysis model (could be trained or pre-trained)
+            sentimentAnalysisTool = new SentimentAnalysisTool("path_to_sentiment_model");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void execute(Tuple tuple) {
+        String userId = tuple.getStringByField("userId");
+        String productId = tuple.getStringByField("productId");
+        String reviewText = tuple.getStringByField("reviewText");
+
+        // Perform sentiment analysis on the review
+        String sentiment = sentimentAnalysisTool.analyzeSentiment(reviewText);
+
+        // Use sentiment score along with product attributes for content-based filtering
+        System.out.println("Review Sentiment for Product " + productId + ": " + sentiment);
+        // Based on sentiment, adjust recommendations or take into account sentiment score
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("userId", "productId", "sentiment"));
+    }
+}
+```
+
+#### 5. **Modify the Topology**
+
+Finally, you need to modify the **Storm Topology** to include the **Review and Rating Spout** and the updated bolts.
+
+```java
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.LocalCluster;
+
+public class RecommendationTopologyWithReviews {
+    public static void main(String[] args) throws Exception {
+        TopologyBuilder builder = new TopologyBuilder();
+
+        // Define the spouts and bolts
+        builder.setSpout("review-rating-spout", new ReviewRatingSpout(), 1);
+        builder.setBolt("cf-bolt", new CollaborativeFilteringWithRatingsBolt(), 2).shuffleGrouping("review-rating-spout");
+        builder.setBolt("cb-bolt", new ContentBasedWithSentimentBolt(), 2).shuffleGrouping("review-rating-spout");
+
+        // Submit topology to the cluster (or run in local mode)
+        LocalCluster cluster = new LocalCluster();
+        cluster.submitTopology("recommendation-topology-with-reviews", new Config(), builder.createTopology());
+        
+        // Let the topology run for a while
+        Thread.sleep(10000);
+
+        // Shutdown the cluster
+        cluster.shutdown();
+    }
+}
+```
+
+---
+
+### **Conclusion**
+
+Incorporating **product reviews and ratings** into the **Apache Storm** recommendation system enhances the recommendation quality by adding valuable feedback from users. Here's a summary of the updates made:
+
+- **Spout**: Modified to emit review and rating data alongside product views and purchases.
+- **Collaborative Filtering Bolt**: Now considers ratings in addition to user
