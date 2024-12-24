@@ -251,3 +251,110 @@ public class KafkaPriorityConsumer {
 - **Streaming Nature**: The loop is designed to continuously poll and process messages, giving it a stream-like behavior, where data is processed as it arrives, with priority given to delta messages.
 
 This should now meet all the conditions and handle the continuous data processing as described. 
+
+# Detailed Explanation and process flow
+
+Sure! Let's go over the mechanism in more detail to understand how the full-load processing is temporarily halted when delta messages arrive in the middle of full-load processing.
+
+### 1. **Polling Both Topics (Delta and Full-Load)**:
+In the solution, the consumer is polling **both** the delta and full-load topics **continuously** in the main processing loop. The polling is done in parallel, which means that at each iteration, the Kafka consumer fetches messages from both topics, even though they are processed sequentially.
+
+Here’s how the polling works:
+```java
+var deltaRecords = deltaConsumer.poll(1000);  // Poll for delta messages
+var fullLoadRecords = fullLoadConsumer.poll(1000);  // Poll for full-load messages
+```
+
+- **`deltaRecords`** will contain messages from the **delta topic**.
+- **`fullLoadRecords`** will contain messages from the **full-load topic**.
+
+Both records are fetched within the same poll iteration (i.e., at the same time), but the processing of each is done separately. 
+
+### 2. **Delta Message Processing Priority**:
+The priority of delta messages is set by the program flow. The key idea here is that **delta messages always take precedence over full-load messages**.
+
+Here’s the processing flow:
+```java
+if (!deltaRecords.isEmpty()) {
+    processingDelta = true;
+    deltaRecords.forEach(record -> {
+        // Process delta message here
+        System.out.println("Processing delta message: " + record.value());
+    });
+}
+```
+
+If **delta messages** are found (i.e., `deltaRecords.isEmpty()` is `false`), we set the flag `processingDelta` to `true` and process all delta messages. This flag indicates that delta messages are being processed.
+
+### 3. **Full-Load Processing Temporarily Halted**:
+While **delta messages are being processed**, no full-load messages are processed. This is achieved by **not touching the full-load messages** until **all delta messages are processed** in the current poll cycle.
+
+- If there are **delta messages available**, we process them and **skip full-load message processing entirely** for that poll cycle.
+- After processing delta messages, if there are no more delta messages, the flag `processingDelta` will be set to `false`:
+  
+```java
+if (deltaRecords.isEmpty() && !processingDelta) {
+    fullLoadRecords.forEach(record -> {
+        // Process full-load message here
+        System.out.println("Processing full-load message: " + record.value());
+    });
+}
+```
+
+- When `processingDelta` is `false`, the program proceeds to process full-load messages. 
+
+### 4. **Interrupting Full-Load Processing**:
+Now, here's the crucial part about **halting full-load message processing in the middle**:
+
+- Full-load messages will **only** be processed if the delta queue is empty (`deltaRecords.isEmpty()`) and **`processingDelta` flag is false**.
+  
+However, **if new delta messages come in while processing full-load messages**, we have the following logic:
+
+1. The consumer polls both `deltaTopic` and `fullLoadTopic`. Let's say delta messages are not empty during this poll cycle.
+2. The program processes all delta messages **first**, and the `processingDelta` flag is set to `true`.
+3. After finishing processing delta messages, **if there are still any full-load messages left**, the program will **resume processing full-load messages** only when `deltaRecords` is empty and `processingDelta` is `false`.
+
+The flow here is that the **processing loop** will **interrupt** full-load processing only when delta messages come in during that cycle.
+
+### Example Walkthrough:
+
+#### Iteration 1:
+1. **Poll both topics**:
+   - **Delta**: There are delta messages available.
+   - **Full-Load**: No full-load messages available.
+   
+2. **Process delta messages**:
+   - Delta messages are processed first because the delta queue has messages (`deltaRecords.isEmpty() == false`).
+   - After processing all delta messages, move to the next iteration.
+
+#### Iteration 2:
+1. **Poll both topics again**:
+   - **Delta**: There are still delta messages available.
+   - **Full-Load**: Full-load messages are available.
+   
+2. **Process delta messages**:
+   - Again, delta messages are processed first.
+   - Full-load messages will be skipped in this iteration since delta messages still exist.
+
+#### Iteration 3:
+1. **Poll both topics again**:
+   - **Delta**: No delta messages available.
+   - **Full-Load**: Full-load messages are available.
+   
+2. **Process full-load messages**:
+   - Since no delta messages are left, full-load messages are now processed.
+   
+#### Iteration 4:
+1. **Poll both topics**:
+   - **Delta**: New delta messages arrive while full-load messages are being processed.
+   - **Full-Load**: Full-load messages are still pending.
+   
+2. **Halt Full-Load Processing**:
+   - The loop detects new delta messages (`deltaRecords.isEmpty() == false`).
+   - Processing of full-load messages **pauses**, and delta messages are processed first, followed by resumption of full-load processing after delta messages are done.
+
+### Final Thought on Full-Load Processing Halting:
+The full-load processing is not truly "paused" in the typical sense. Rather, the program **discontinues** full-load processing temporarily by switching to the delta messages when they arrive. The processing of the full-load messages will only resume once there are no delta messages left to process (i.e., `deltaRecords.isEmpty()` is `true` and `processingDelta` is `false`).
+
+This creates a **dynamic, real-time system** where full-load processing is effectively "paused" whenever high-priority delta messages are available, and full-load processing is resumed once all delta messages have been consumed.
+
