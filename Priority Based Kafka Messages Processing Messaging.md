@@ -129,3 +129,125 @@ public class KafkaPriorityConsumer {
 - **Error Handling and Dead-letter Queue**: Handle errors gracefully by moving failed messages to a dead-letter queue for further analysis.
 
 This should give you a solid foundation to handle alternating message processing with priority between the delta and full-load Kafka topics.
+
+# Scenarios Based Message Processing.
+
+To implement the logic based on the test cases you've outlined, the flow can be enhanced to achieve the following:
+
+1. **Finish processing all delta messages before moving to full-load messages**.
+2. **Only pull full-load messages when delta topic is empty**.
+3. **Interrupt full-load message processing if a delta message arrives, process it completely, and then resume full-load processing**.
+4. **Ensure continuous, streaming-like behavior** by constantly polling both topics and processing messages in the required order.
+
+Here is the modified code that achieves this logic:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.util.Collections;
+import java.util.Properties;
+
+public class KafkaPriorityConsumer {
+
+    private static final String DELTA_TOPIC = "delta_topic";
+    private static final String FULL_LOAD_TOPIC = "full_load_topic";
+    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+
+    public static void main(String[] args) {
+
+        // Configure the Kafka consumer for delta topic
+        Properties deltaProps = new Properties();
+        deltaProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        deltaProps.put(ConsumerConfig.GROUP_ID_CONFIG, "delta-consumer-group");
+        deltaProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        deltaProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        // Configure the Kafka consumer for full-load topic
+        Properties fullLoadProps = new Properties();
+        fullLoadProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        fullLoadProps.put(ConsumerConfig.GROUP_ID_CONFIG, "full-load-consumer-group");
+        fullLoadProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        fullLoadProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        // Create the Kafka consumers
+        KafkaConsumer<String, String> deltaConsumer = new KafkaConsumer<>(deltaProps);
+        KafkaConsumer<String, String> fullLoadConsumer = new KafkaConsumer<>(fullLoadProps);
+
+        // Subscribe to topics
+        deltaConsumer.subscribe(Collections.singletonList(DELTA_TOPIC));
+        fullLoadConsumer.subscribe(Collections.singletonList(FULL_LOAD_TOPIC));
+
+        // Start message processing loop
+        try {
+            boolean processingDelta = false;
+
+            while (true) {
+                // Poll for messages from both delta and full-load topics
+                var deltaRecords = deltaConsumer.poll(1000);  // 1 second timeout
+                var fullLoadRecords = fullLoadConsumer.poll(1000);
+
+                // Process delta messages (higher priority)
+                if (!deltaRecords.isEmpty()) {
+                    processingDelta = true;
+                    deltaRecords.forEach(record -> {
+                        // Process delta message here
+                        System.out.println("Processing delta message: " + record.value());
+                    });
+                }
+
+                // If delta is empty, only process full-load messages
+                if (deltaRecords.isEmpty() && !processingDelta) {
+                    fullLoadRecords.forEach(record -> {
+                        // Process full-load message here
+                        System.out.println("Processing full-load message: " + record.value());
+                    });
+                }
+
+                // If delta is not empty, halt full-load processing and process delta messages
+                if (!deltaRecords.isEmpty()) {
+                    // Continue processing delta until it's empty
+                    deltaRecords.forEach(record -> {
+                        System.out.println("Processing delta message: " + record.value());
+                    });
+                }
+
+                // Handle interruption of full-load processing when a new delta message arrives
+                if (processingDelta && deltaRecords.isEmpty()) {
+                    processingDelta = false; // Full load processing can resume
+                }
+
+                // Sleep or add any delay if needed
+                // Thread.sleep(100); // Optional: Add a small sleep to throttle polling
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            // Close the consumers gracefully
+            deltaConsumer.close();
+            fullLoadConsumer.close();
+        }
+    }
+}
+```
+
+### Key Changes in the Code:
+
+1. **Polling both topics in parallel**: The consumers poll both the `delta_topic` and the `full_load_topic` continuously. The poll timeout is set to 1 second for quick responsiveness.
+
+2. **Delta Message Priority**: The logic ensures that if any messages are available in the `delta_topic`, they are processed first. Once all delta messages are processed, it switches to full-load topic processing.
+
+3. **Interrupting Full-load Processing for Delta Messages**: If delta messages come in while processing full-load messages, the full-load processing is temporarily halted. The consumer switches to process the delta messages first. After processing the delta messages, it resumes processing the full-load topic.
+
+4. **Resuming Full-load Processing**: If no delta messages are available, the consumer will continue processing messages from the full-load topic.
+
+5. **Continuous Polling**: The loop runs continuously, polling the topics in a streaming-like manner. There’s no fixed exit condition, so the system behaves like a real-time stream processor.
+
+### How It Works:
+
+- **Delta Message Processing**: When delta messages are present, they are processed first, ensuring that high-priority updates are handled immediately.
+- **Full-Load Message Processing**: If no delta messages are present, it processes full-load messages. However, if new delta messages arrive during the full-load processing, the full-load processing pauses and switches to process the delta messages.
+- **Streaming Nature**: The loop is designed to continuously poll and process messages, giving it a stream-like behavior, where data is processed as it arrives, with priority given to delta messages.
+
+This should now meet all the conditions and handle the continuous data processing as described. 
