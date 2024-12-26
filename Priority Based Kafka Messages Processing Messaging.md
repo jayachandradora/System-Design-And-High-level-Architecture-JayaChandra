@@ -358,3 +358,145 @@ The full-load processing is not truly "paused" in the typical sense. Rather, the
 
 This creates a **dynamic, real-time system** where full-load processing is effectively "paused" whenever high-priority delta messages are available, and full-load processing is resumed once all delta messages have been consumed.
 
+
+# Provided solution, multi-threading
+
+In the provided solution, **multi-threading** is **not strictly required** to implement the priority handling between delta and full-load messages. The logic you provided can work in a **single-threaded consumer model**, where the main thread polls both Kafka topics in a loop and processes messages from the **delta topic first** before moving to the **full-load topic**.
+
+However, if you want to **enhance responsiveness** or **improve scalability**, especially if you are processing high-throughput messages, **multi-threading** can be useful. It would allow you to **process delta and full-load messages concurrently**, but still ensure that delta messages get **priority**.
+
+Let me break it down for you:
+
+### 1. **Single-Threaded Approach (Current Model)**
+
+In the existing solution, the consumer runs in a **single thread** and checks both the delta and full-load topics in each poll iteration. The priority is handled sequentially within the same thread:
+
+- **If delta messages are available**, they are processed immediately.
+- **If no delta messages are found**, the consumer will process full-load messages.
+- **If new delta messages arrive while full-load messages are being processed**, the loop immediately checks the delta topic again, halting full-load processing and processing the delta messages.
+
+This approach is straightforward and works well when you do not need extreme concurrency. Kafka consumers are designed to be fast enough to handle relatively high-throughput message processing within a single thread, especially if you can handle backpressure and message batching.
+
+### 2. **Multi-threaded Approach (Improved with Parallelism)**
+
+In a **multi-threaded model**, you can dedicate separate threads for processing delta and full-load messages, while still maintaining priority to delta messages. The core idea is to have **one or more threads for the full-load topic** and **one thread for the delta topic**. The delta thread will always take precedence over the full-load threads.
+
+#### Key Concept:
+- **Delta Message Thread**: Dedicated to processing delta messages as soon as they arrive.
+- **Full-Load Threads**: These will process full-load messages, but only **after** delta messages are completely processed.
+
+The full-load thread can be paused or "interrupted" if new delta messages arrive while it is processing.
+
+### Key Benefits of Multi-threading:
+1. **Concurrent Processing**: Full-load and delta messages can be processed in parallel if necessary, potentially speeding up the entire process (depending on how CPU-bound the processing logic is).
+2. **Non-blocking Behavior**: The delta message processing can continue uninterrupted by full-load processing, which could improve latency for delta message processing.
+
+#### How Multi-threading Could Be Implemented:
+
+1. **Separate Thread for Delta Topic**: You can create a dedicated thread for polling and processing delta messages. This thread can run continuously, and as soon as delta messages arrive, they will be processed.
+   
+2. **Main Thread for Full-Load Topic**: The main consumer thread can handle the full-load topic and process those messages.
+
+3. **Thread Coordination (Shared Flag or Semaphore)**: Use a shared flag or a signaling mechanism (e.g., a `Semaphore` or `BlockingQueue`) to control the communication between the delta thread and the full-load thread. This will ensure that the full-load processing is paused whenever the delta message thread is active.
+
+### Example of Multi-Threading Concept for Kafka Consumers
+
+Here’s an illustration of how you can implement a multi-threaded model to ensure delta message priority:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.util.Collections;
+import java.util.Properties;
+
+public class KafkaPriorityConsumer {
+
+    private static final String DELTA_TOPIC = "delta_topic";
+    private static final String FULL_LOAD_TOPIC = "full_load_topic";
+    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+
+    public static void main(String[] args) {
+        // Create and configure Kafka consumers for both topics
+        KafkaConsumer<String, String> deltaConsumer = createConsumer(DELTA_TOPIC, "delta-consumer-group");
+        KafkaConsumer<String, String> fullLoadConsumer = createConsumer(FULL_LOAD_TOPIC, "full-load-consumer-group");
+
+        // Start a thread for delta topic processing
+        Thread deltaThread = new Thread(() -> processDeltaMessages(deltaConsumer));
+        deltaThread.setDaemon(true);  // Daemon thread, so it won't block the JVM from exiting
+        deltaThread.start();
+
+        // Start the main thread for full-load topic processing
+        processFullLoadMessages(fullLoadConsumer);
+    }
+
+    private static KafkaConsumer<String, String> createConsumer(String topic, String groupId) {
+        Properties properties = new Properties();
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
+        consumer.subscribe(Collections.singletonList(topic));
+        return consumer;
+    }
+
+    private static void processDeltaMessages(KafkaConsumer<String, String> deltaConsumer) {
+        try {
+            while (true) {
+                // Poll for delta messages
+                var deltaRecords = deltaConsumer.poll(1000); // 1-second timeout
+                
+                if (!deltaRecords.isEmpty()) {
+                    deltaRecords.forEach(record -> {
+                        // Process delta message here
+                        System.out.println("Processing delta message: " + record.value());
+                    });
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            deltaConsumer.close();
+        }
+    }
+
+    private static void processFullLoadMessages(KafkaConsumer<String, String> fullLoadConsumer) {
+        try {
+            while (true) {
+                // Poll for full-load messages
+                var fullLoadRecords = fullLoadConsumer.poll(1000); // 1-second timeout
+                
+                if (!fullLoadRecords.isEmpty()) {
+                    fullLoadRecords.forEach(record -> {
+                        // Process full-load message here
+                        System.out.println("Processing full-load message: " + record.value());
+                    });
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            fullLoadConsumer.close();
+        }
+    }
+}
+```
+
+### Key Points in the Multi-Threaded Approach:
+- **Delta Thread**: This thread is dedicated to processing delta messages. It is always running and can **interrupt** full-load processing by processing delta messages as soon as they arrive.
+- **Main Thread**: The main thread processes full-load messages but will only do so if the delta thread isn't actively processing any delta messages.
+  
+### Thread Coordination:
+- The **delta thread** has higher priority and can preempt the **full-load thread** when new delta messages arrive.
+- If **delta messages arrive**, the main thread can **pause** or **stop processing full-load messages** temporarily and let the delta thread process those messages.
+  
+While this setup uses **two threads** (one for delta processing and one for full-load processing), the **priority of delta messages** is maintained because the **delta thread runs independently** and always gets a chance to process messages when they arrive.
+
+### Conclusion:
+In summary:
+- A **single-threaded approach** can work perfectly fine for most use cases where the delta message priority logic is simple and low to moderate throughput is expected.
+- **Multi-threading** is beneficial if you want to **maximize throughput** or if you want **parallel processing** for delta and full-load messages, while still maintaining delta message priority. In this case, you'd use **separate threads** and some coordination mechanism (like flags or semaphores) to ensure full-load processing is temporarily paused whenever delta messages arrive. 
+
+For **simple Kafka consumers** that just need **priority handling** and low complexity, **multi-threading is not strictly necessary**. But, if you're building a **high-throughput real-time system**, multi-threading will help in ensuring that both types of messages are processed more efficiently.
