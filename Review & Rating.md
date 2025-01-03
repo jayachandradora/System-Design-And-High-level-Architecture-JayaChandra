@@ -1,4 +1,4 @@
-# Movie Review and Rating 
+# Movie Review & Rating 
 
 To design a system for movie reviews and ratings based on information gathered from three different sources, and then provide functionalities such as real-time calculations, top movies list, and individual movie ratings, we will break the design into key components. The solution will focus on:
 
@@ -450,3 +450,131 @@ This modular approach ensures that you can scale each component independently ba
 By using a combination of **NoSQL databases**, **event-driven architecture**, **real-time streaming (Kafka)**, **caching (Redis)**, and **Elasticsearch**, you can build a highly scalable and performant movie rating and review system that can handle millions of users, real-time data, and high-volume updates without relying solely on traditional SQL databases.
 
 This architecture ensures that your system can scale horizontally, provide low-latency queries, and handle the real-time nature of the movie data.
+
+# Leveraging Count-Min Sketch (CMS) algorithm 
+
+The **Count-Min Sketch (CMS)** algorithm is a **probabilistic data structure** used for approximating the frequency of events in a large dataset. It's particularly well-suited for high-frequency, low-memory, and low-latency systems, where you need to track frequencies or counts of events but can tolerate small errors in the estimates. Given its ability to handle large-scale data efficiently, the **Count-Min Sketch** can be highly effective for your movie rating system, particularly when scaling to a large number of users and data sources.
+
+In the context of your **movie review and rating system**, you can use **Count-Min Sketch** to:
+
+1. **Track the frequency of movie ratings** (e.g., number of reviews or occurrences of a particular rating) in real time.
+2. **Efficiently compute approximate aggregated ratings** across multiple sources.
+3. **Track top movies** or those with the most reviews efficiently, even in a distributed system.
+
+### **How Count-Min Sketch Fits Into the System**
+
+The main idea is that Count-Min Sketch can help with two critical aspects of your system:
+1. **Real-Time Rating Aggregation** — By maintaining an approximate frequency table of ratings.
+2. **Top Movies Calculation** — By efficiently calculating the "most popular" movies (i.e., those with the most reviews or highest ratings) in real-time.
+
+### **Steps to Apply Count-Min Sketch in Your System**
+
+#### **1. Count-Min Sketch Overview**
+The Count-Min Sketch uses a **hashing technique** to approximate the count (or frequency) of items. It operates by maintaining a 2D array of counters (called "sketches"). The rows in the array are each hashed using different hash functions, and each movie's rating or review count is updated at the intersections of the corresponding hash values.
+
+- **Error Bounds:** You can configure the Count-Min Sketch to trade off between **memory usage** and **accuracy**. By adjusting the width (number of columns) and depth (number of rows) of the CMS, you can control the error rates.
+- **Space Efficiency:** It’s memory-efficient because it doesn’t need to store the full list of ratings and reviews but only the counts for each hash.
+
+#### **2. Scaling Aggregated Ratings with Count-Min Sketch**
+
+Here’s how you can integrate the **Count-Min Sketch** to scale real-time aggregation of movie ratings:
+
+- **Track Movie Ratings:** When a new review or rating comes in for a movie, the CMS is updated by incrementing counters in a sketch structure corresponding to that movie's ID and rating.
+- **Approximate Aggregation:** Instead of storing exact counts and ratings for each movie from each source, CMS gives you an **approximate frequency count** for each movie’s rating, allowing you to quickly calculate an approximate aggregated rating.
+
+##### **Example Data Flow:**
+
+1. **New Rating Arrives:**
+   - A new review is fetched from an external source (e.g., Site1).
+   - The movie's ID and the rating are mapped to a Count-Min Sketch using a hash function.
+   - The frequency of that movie and rating is updated in the CMS.
+
+2. **Update Aggregated Rating (Approximation):**
+   - When displaying the aggregated rating for a movie, you can take the **average** of the ratings in the Count-Min Sketch, which can be approximated by using the count of reviews and the sum of ratings (this can be derived through hash collisions).
+
+3. **Update Real-Time Rankings:**
+   - The CMS maintains approximate counts of movie reviews (or aggregated ratings). Using this data, you can efficiently calculate which movies are "top-rated" or "most popular" based on the frequency of reviews or ratings.
+
+#### **3. Using Count-Min Sketch for Top 10 Movies**
+
+The Count-Min Sketch can also be used to **track and rank movies based on review counts or aggregated ratings** efficiently in real-time:
+
+1. **Top Movies by Count of Reviews:**
+   - Maintain a CMS where each movie’s ID is hashed and stored with its review count. When a movie’s review count increases, update the CMS.
+   - To find the top movies (most reviewed), simply query the CMS for the movies with the highest counts.
+
+2. **Top Movies by Aggregated Rating:**
+   - Maintain a separate CMS for each source of reviews to approximate ratings.
+   - Use multiple CMS tables to track the average or cumulative ratings for each movie (across all sources).
+   - Rank movies by their **aggregated rating estimates**.
+
+   To compute the **approximate aggregated rating**:
+   - Count-Min Sketch doesn't directly store ratings but only counts, so you would need to **calculate weighted ratings** by keeping track of total ratings for each movie.
+   - Use the `total sum` of ratings and divide by the **count of reviews** to estimate the average rating.
+
+#### **4. Efficient Real-Time Movie Query with Count-Min Sketch**
+
+For querying individual movies (e.g., a user searches for a movie to get its rating):
+
+1. The CMS will give an **approximate review count** and **aggregated rating**.
+2. Since the data in CMS is an approximation, the **error rate** can be adjusted using more rows or columns for better precision at the cost of more memory.
+
+#### **5. Using Multiple CMS for Different Dimensions (Scaling Across Sources)**
+
+If you have data from multiple sources, you can use **multiple Count-Min Sketches** for each source to maintain independence and avoid interference:
+
+- **CMS for Source 1**: Tracks the count and aggregated rating for reviews from Source 1.
+- **CMS for Source 2**: Tracks the count and aggregated rating for reviews from Source 2.
+- **CMS for Source 3**: Tracks the count and aggregated rating for reviews from Source 3.
+
+Then, for the final aggregated rating:
+1. You can combine the results of these individual CMS structures by computing a **weighted average** or **total sum** based on the count or rating from each source.
+
+This can be done by:
+1. Taking the counts and ratings from each CMS.
+2. Combining them using a **weighted aggregation formula** based on the importance of each source or the number of reviews from each source.
+
+#### **6. Performance and Scalability Considerations**
+
+- **Memory Usage:** By tuning the **depth** (number of rows) and **width** (number of columns) of the CMS, you can balance memory usage and accuracy. A larger CMS will reduce error rates but require more memory.
+- **Concurrency and Parallelism:** Since CMS is a simple and fast algorithm, it can be updated concurrently without significant performance hits. If your system is distributed, you can update CMS in parallel across multiple nodes (for example, when processing different batches of incoming reviews).
+- **Distributed CMS:** For large-scale systems, you can distribute the CMS across multiple servers or databases. This is especially useful when you need to handle **distributed writes** and **high traffic**.
+
+#### **7. Real-Time Updates Using CMS and Streaming**
+
+For real-time updates, combine **Count-Min Sketch** with **stream processing** frameworks like **Apache Kafka** or **Apache Flink**. This allows you to process incoming rating data streams and update the CMS in real-time.
+
+- **Stream Rating Data**: As each new rating comes in (via a Kafka topic or a similar system), it triggers an update to the CMS.
+- **Real-Time Aggregation**: The system can compute and rank movies continuously based on the current state of the CMS.
+
+### **Scaling Example with Count-Min Sketch**
+
+Let's consider a system with millions of movies and reviews. Here's how CMS can help:
+
+1. **For Real-Time Rating Calculation:**
+   - As users submit reviews across millions of movies, CMS helps track the approximate counts and ratings in **constant time**.
+   - The system doesn't need to maintain large, expensive in-memory or SQL tables with precise counts.
+
+2. **For Top 10 Movies:**
+   - Track the most popular or top-rated movies using CMS by maintaining frequency counts of reviews.
+   - With CMS, finding the top 10 movies becomes an **O(1)** operation — simply read the sketch for the counts and sort them.
+
+3. **For Querying Individual Movies:**
+   - Query the CMS for an approximate rating or review count in near real-time without incurring a heavy processing load.
+
+### **Implementation Strategy**
+
+1. **CMS Library Integration:**
+   Use an existing CMS library or implement your own:
+   - For **Python**, you can use libraries like `countminsketch` or `datasketch`.
+   - For **JavaScript/Node.js**, there are libraries such as `count-min-sketch`.
+   
+2. **Distributed CMS**: Implement the CMS across distributed systems (e.g., using **Apache Kafka** for real-time streaming and **Redis** for caching) to handle large-scale, distributed updates in real-time.
+
+### **Conclusion**
+
+Using **Count-Min Sketch** in your movie rating system enables **efficient real-time updates, memory savings**, and **low-latency aggregation**. It is especially effective for large-scale systems where you need to process and rank data in real-time, without the overhead of storing every review and maintaining exact counts.
+
+By leveraging CMS, you can scale your system to handle millions of reviews and users, provide fast real-time rating calculations, and efficiently manage memory usage. With this approach, you can **achieve a highly scalable, low-latency movie review and rating system** that provides approximate but very accurate insights for your users.
+
+
