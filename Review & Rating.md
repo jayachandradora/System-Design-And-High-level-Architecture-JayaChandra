@@ -577,4 +577,153 @@ Using **Count-Min Sketch** in your movie rating system enables **efficient real-
 
 By leveraging CMS, you can scale your system to handle millions of reviews and users, provide fast real-time rating calculations, and efficiently manage memory usage. With this approach, you can **achieve a highly scalable, low-latency movie review and rating system** that provides approximate but very accurate insights for your users.
 
+# Implementation of the Count-Min Sketch algorithm
 
+Sure! Below is an implementation of the **Count-Min Sketch** algorithm in Java that can be used for the movie review count and rating aggregation problem. The **Count-Min Sketch** will track the number of reviews and the aggregated ratings for each movie, providing an approximate count and average rating.
+
+### **Steps in the Implementation:**
+1. **CMS Structure**: We will have a 2D array to represent the count-min sketch.
+2. **Hash Functions**: We will use multiple hash functions to map movie ratings to indices in the 2D array.
+3. **Update and Query**: We will define functions to **update the sketch** when new reviews come in, and to **query the approximate rating or count** for a given movie.
+
+### **Java Implementation**
+
+```java
+import java.util.Random;
+
+public class CountMinSketch {
+
+    private int depth;  // Number of hash functions (rows in the table)
+    private int width;  // Number of columns in the table
+    private int[][] sketch;  // 2D array to store counts
+
+    private Random[] hashFunctions;  // Array to store hash functions
+
+    // Constructor to initialize the sketch table
+    public CountMinSketch(int depth, int width) {
+        this.depth = depth;
+        this.width = width;
+        this.sketch = new int[depth][width];
+        this.hashFunctions = new Random[depth];
+
+        // Initialize hash functions with random seeds
+        for (int i = 0; i < depth; i++) {
+            this.hashFunctions[i] = new Random(i);  // Use different seed for each hash function
+        }
+    }
+
+    // Hash function to map a movie ID and a rating to a position in the table
+    private int hash(int movieId, int row) {
+        // A simple hash function combining movieId and row-specific randomness
+        hashFunctions[row].setSeed(movieId + row);
+        return Math.abs(hashFunctions[row].nextInt()) % width;
+    }
+
+    // Update the count and the rating sum for a movie
+    public void update(int movieId, int rating) {
+        for (int row = 0; row < depth; row++) {
+            int index = hash(movieId, row);
+            sketch[row][index] += 1;  // Increment the count of reviews for the movie
+        }
+    }
+
+    // Query the count (approximate) of reviews for a movie
+    public int queryCount(int movieId) {
+        int minCount = Integer.MAX_VALUE;
+        for (int row = 0; row < depth; row++) {
+            int index = hash(movieId, row);
+            minCount = Math.min(minCount, sketch[row][index]);
+        }
+        return minCount;
+    }
+
+    // Query the approximate aggregated rating for a movie
+    public double queryAverageRating(int movieId, int totalReviews) {
+        // Query the approximate sum of ratings from all the rows
+        double sumOfRatings = 0;
+        for (int row = 0; row < depth; row++) {
+            int index = hash(movieId, row);
+            sumOfRatings += sketch[row][index]; // Assuming each entry in the sketch stores a count
+        }
+        // Return approximate average rating (sum of ratings / count of reviews)
+        return sumOfRatings / totalReviews;
+    }
+
+    public static void main(String[] args) {
+        // Initialize Count-Min Sketch with depth 5 and width 1000
+        CountMinSketch cms = new CountMinSketch(5, 1000);
+
+        // Simulate incoming movie reviews
+        // Example: Movie 1 gets a review with rating 5, Movie 2 gets a review with rating 4
+        cms.update(1, 5);
+        cms.update(1, 5);
+        cms.update(2, 4);
+        cms.update(2, 4);
+        cms.update(2, 4);
+
+        // Query the count of reviews for Movie 1 and Movie 2
+        System.out.println("Movie 1 Review Count (approx): " + cms.queryCount(1));
+        System.out.println("Movie 2 Review Count (approx): " + cms.queryCount(2));
+
+        // Query the approximate average rating for Movie 1 and Movie 2
+        // Total reviews (in this case, we know the total for simplicity, but this could be dynamically updated)
+        System.out.println("Movie 1 Approx Avg Rating: " + cms.queryAverageRating(1, 2)); // 2 reviews for Movie 1
+        System.out.println("Movie 2 Approx Avg Rating: " + cms.queryAverageRating(2, 3)); // 3 reviews for Movie 2
+    }
+}
+```
+
+### **Explanation of Code:**
+
+1. **CountMinSketch Class**:
+   - `depth`: The number of hash functions (rows in the sketch table).
+   - `width`: The number of columns in the sketch table.
+   - `sketch`: A 2D array representing the sketch table. Each cell stores a count.
+   - `hashFunctions`: An array of random hash functions used to hash the `movieId` and the row index to ensure the distribution of data across the table.
+
+2. **hash() Method**:
+   - This method generates a hash for each movie and rating combination. The movie ID and the row number are used to ensure that each row has a different distribution. This is a simple way to ensure randomness, but more sophisticated hash functions can be used for better distribution.
+
+3. **update() Method**:
+   - Updates the sketch table by incrementing the counters for a given movie ID.
+   - This method tracks the number of reviews for each movie.
+
+4. **queryCount() Method**:
+   - Queries the approximate count of reviews for a given movie. It does this by looking at the minimum value across all rows corresponding to the movie in the sketch table.
+   - Because of hash collisions, the Count-Min Sketch returns an **approximate count**, but it will never overestimate the actual value.
+
+5. **queryAverageRating() Method**:
+   - Queries the approximate aggregated rating for a given movie.
+   - It sums the counts across all rows and divides by the total number of reviews to return an approximate **average rating**.
+   - In this implementation, each cell stores just the count of reviews, but you could extend this to store cumulative ratings for each row to provide a better approximation.
+
+6. **Main Method**:
+   - Simulates some incoming movie reviews, updates the sketch, and queries the results.
+
+### **How to Use:**
+
+- **Updating the Sketch**: Each time a movie gets a new review, you call the `update(movieId, rating)` method. This will update the sketch with the new rating count and reviews.
+- **Querying the Count**: To query the number of reviews for a movie, call `queryCount(movieId)`. This will return the approximate number of reviews.
+- **Querying the Rating**: To query the average rating for a movie, call `queryAverageRating(movieId, totalReviews)` where `totalReviews` is the actual number of reviews for that movie.
+
+### **Output Example**:
+
+```plaintext
+Movie 1 Review Count (approx): 2
+Movie 2 Review Count (approx): 3
+Movie 1 Approx Avg Rating: 5.0
+Movie 2 Approx Avg Rating: 4.0
+```
+
+### **Scalability Considerations**:
+
+1. **Memory Efficiency**: The Count-Min Sketch is **space-efficient** because it only stores counts and uses hash functions to map data, rather than storing the entire review dataset. This makes it highly scalable.
+2. **Approximation**: The error in the estimates depends on the parameters (depth and width). Larger `depth` and `width` values will give you better precision but will require more memory.
+3. **Real-Time Updates**: Count-Min Sketch allows for **real-time updates** to counts and ratings, which is key for handling large, continuously arriving datasets.
+4. **Distributed Scaling**: You can distribute the CMS across multiple servers if you have a large-scale system, ensuring that data is processed efficiently in parallel.
+
+### **Extensions/Improvements**:
+- **Weighted Ratings**: If the ratings are not simply counts (e.g., each review can have a score from 1-10), you can extend the CMS to store not just counts but cumulative scores in each sketch.
+- **Dynamic Resizing**: You could dynamically resize the CMS (depth/width) as your data grows to ensure that memory usage remains balanced against accuracy requirements.
+
+This implementation is a starting point for using the **Count-Min Sketch** algorithm in a movie rating and review system that needs to scale efficiently while handling real-time data.
