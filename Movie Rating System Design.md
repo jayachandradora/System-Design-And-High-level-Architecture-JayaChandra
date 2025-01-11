@@ -1,4 +1,58 @@
+
 # Movie Rating System Design
+
+
+### Functional Requirements
+
+1. **Rate a Movie**  
+   Endpoint: `POST /movies/{movie_id}/ratings`  
+   - Allow users to submit a rating between 1 and 5.
+   - Reject invalid ratings with an error message.
+
+2. **Retrieve All Ratings for a Movie**  
+   Endpoint: `GET /movies/{movie_id}/ratings`  
+   - Return a list of individual ratings for the specified movie.
+
+3. **Rating Summary**  
+   Endpoint: `GET /movies/{movie_id}/rating-summary`  
+   - Calculate and return:
+     - Total Rating (sum of all individual ratings)
+     - Average Rating (rounded to 1 decimal place)
+
+4. **Get Movie Details**  
+   Endpoint: `GET /movies/{movie_id}`  
+   - Retrieve movie details (e.g., title, genre, release year).
+
+5. **Update/Delete Rating**  
+   Endpoint: `PUT /movies/{movie_id}/ratings/{rating_id}` or `DELETE /movies/{movie_id}/ratings/{rating_id}`  
+   - Allow users to modify or delete their rating for a movie.
+
+---
+
+### Non-Functional Requirements
+
+1. **Performance**  
+   - Total and average ratings should be available within 200-500ms.  
+   - The system should handle 1,000+ requests per second.
+
+2. **Scalability**  
+   - Efficient database indexing and sharding to support millions of ratings.
+   - Use of caching (e.g., Redis) for frequently accessed data.
+
+3. **Reliability & Availability**  
+   - API should have 99.9% uptime and be resilient to failures.  
+   - Database replication for high availability and basic monitoring.
+
+4. **Data Consistency**  
+   - Ensure correct recalculation of total and average ratings on new submissions.  
+   - Use transactions for consistent updates to ratings and summaries.  
+   - Implement eventual consistency for cached data.
+
+5. **Security & Authentication**  
+   - API endpoints protected by authentication (e.g., OAuth, JWT tokens).  
+   - Rate limiting to prevent abuse.  
+   - Securely store sensitive data (e.g., user ID, ratings) and validate inputs to prevent vulnerabilities (e.g., SQL injection).  
+
 
 To implement an API and database design for calculating movie ratings (including the total rating and average rating), we'll need to structure both the **API** endpoints and the **Database schema** to efficiently store and compute ratings.
 
