@@ -248,3 +248,159 @@ public class SparkApiProcessorWithParallelProcessingAndCheckpoint {
 - **Checkpointing**: While checkpointing is done serially (after each batch), parallelized processing ensures that the job is faster overall.
   
 This approach is now optimized for **parallel processing** of batches and can handle **retry logic** with proper **checkpointing** to ensure job recovery in case of failures.
+
+# Java solution to PySpark
+
+Certainly! To convert the provided Java solution to **PySpark**, we will make use of the same basic logic, leveraging the Python version of Spark API. Here's the converted solution in Python, ensuring the logic remains the same for **parallel processing**, **retry mechanism**, and **checkpointing**.
+
+### PySpark Implementation
+
+```python
+import json
+import time
+import requests
+import os
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+from concurrent.futures import ThreadPoolExecutor
+
+# Constants
+API_URL = "https://your.api.endpoint"
+BATCH_SIZE = 100  # Number of records per batch
+CHECKPOINT_FILE_PATH = "checkpoint.txt"  # Path to store checkpoint
+MAX_RETRIES = 3  # Maximum number of retry attempts
+RETRY_DELAY_MS = 1000  # Initial delay in milliseconds for retry
+MAX_RETRY_DELAY_MS = 8000  # Maximum delay between retries (exponential backoff)
+
+# Executor for parallel processing
+executor = ThreadPoolExecutor(max_workers=10)
+
+def send_to_api_with_retry(batch):
+    """ Send batch to API with retry logic """
+    attempts = 0
+    delay = RETRY_DELAY_MS
+    while attempts < MAX_RETRIES:
+        try:
+            response = requests.post(API_URL, json=batch)
+            if response.status_code == 200:
+                print(f"Successfully sent batch to API: {batch}")
+                return True
+            else:
+                print(f"API request failed (attempt {attempts + 1}): {response.text}")
+        except requests.RequestException as e:
+            print(f"API call failed (attempt {attempts + 1}): {str(e)}")
+
+        # Exponential backoff
+        attempts += 1
+        time.sleep(delay / 1000)  # Convert to seconds
+        delay = min(delay * 2, MAX_RETRY_DELAY_MS)  # Exponential backoff delay
+
+    # If retries are exhausted, return failure
+    print(f"API request failed after {MAX_RETRIES} attempts.")
+    return False
+
+def update_checkpoint(last_processed_index):
+    """ Update checkpoint file with the last processed index """
+    try:
+        with open(CHECKPOINT_FILE_PATH, 'w') as f:
+            f.write(str(last_processed_index))
+        print(f"Checkpoint updated: {last_processed_index}")
+    except Exception as e:
+        print(f"Error writing checkpoint: {str(e)}")
+
+def read_checkpoint():
+    """ Read the checkpoint file to get the last processed index """
+    if os.path.exists(CHECKPOINT_FILE_PATH):
+        try:
+            with open(CHECKPOINT_FILE_PATH, 'r') as f:
+                return int(f.read().strip())
+        except Exception as e:
+            print(f"Error reading checkpoint: {str(e)}")
+    return -1  # Return -1 if no checkpoint exists (i.e., start from the beginning)
+
+def process_batch(batch, last_processed_index):
+    """ Process a batch of records, send to API, and update checkpoint """
+    if send_to_api_with_retry(batch):
+        update_checkpoint(last_processed_index)
+
+def main():
+    # Create Spark session
+    spark = SparkSession.builder \
+        .appName("CSV to API Processor with Parallel Processing and Checkpoint") \
+        .getOrCreate()
+
+    # Read CSV file into DataFrame
+    csv_file_path = "path_to_your_file.csv"
+    df = spark.read.option("header", "true").csv(csv_file_path)
+
+    # Assuming the JSON records are in a column named "json_data"
+    json_data = df.select(col("json_data"))
+
+    # Convert to RDD for batch processing
+    json_rdd = json_data.rdd
+
+    # Read last checkpoint index
+    last_processed_index = read_checkpoint()
+
+    batch = []
+    record_count = 0
+
+    # Parallel batch processing
+    for row in json_rdd.collect():  # collect() brings data to the driver
+        record = row[0]  # Assuming JSON is in first column
+        batch.append(record)
+        record_count += 1
+
+        # If the batch is full, process it in parallel using executor
+        if len(batch) >= BATCH_SIZE:
+            if record_count > last_processed_index:
+                executor.submit(process_batch, batch, record_count)
+            batch.clear()  # Reset batch for the next set of records
+
+    # Process any remaining records after loop
+    if batch:
+        if record_count > last_processed_index:
+            executor.submit(process_batch, batch, record_count)
+
+    # Wait for all threads to finish
+    executor.shutdown(wait=True)
+
+    # Stop the Spark session
+    spark.stop()
+
+if __name__ == "__main__":
+    main()
+```
+
+### Key Points for the Python Conversion:
+
+1. **Retry Logic** (`send_to_api_with_retry`):
+   - The retry logic remains the same. We are using Python's `requests` module to send data to the API and retry in case of failure.
+   - The retry mechanism includes exponential backoff, where the delay doubles after each failed attempt. If the request fails after `MAX_RETRIES`, it logs the failure and stops retrying.
+
+2. **Parallel Batch Processing**:
+   - We use Python's **`ThreadPoolExecutor`** from the `concurrent.futures` module to submit the batches for parallel execution. 
+   - The `max_workers` parameter is set to 10, meaning we can process up to 10 batches in parallel. You can adjust this depending on your system's resources.
+
+3. **Checkpointing**:
+   - The checkpoint logic is the same. After successfully processing each batch, the `last_processed_index` is updated in a file (`checkpoint.txt`), ensuring the job can resume from where it left off if the job fails or is restarted.
+   - The `read_checkpoint()` function reads the checkpoint to determine from which record to resume.
+
+4. **Batch Processing**:
+   - The data is processed in **batches of size `BATCH_SIZE`**. The batches are collected into a list, and when the batch size reaches the limit, it is sent to the API in parallel using the executor. After sending, the batch is cleared, and the process continues.
+
+5. **Spark Processing**:
+   - We use PySpark to load the data from a CSV file. The `json_data` column (which contains the JSON records) is selected, and the data is processed as an RDD (`json_rdd`). This allows us to manipulate the records and control partitioning and processing logic.
+
+### Handling Checkpointing
+
+- **Checkpoint Update**: After each successful batch is processed, the `update_checkpoint()` function is called to write the `last_processed_index` to a file. This ensures that if the job fails or is restarted, it picks up from where it left off.
+  
+- **Parallelized Checkpointing**: Since checkpoint updates are serialized to a file and not distributed across the cluster, the Python version uses the same basic mechanism as the Java version. However, for larger scale, this could be modified to use a distributed system like HDFS or S3.
+
+### Final Notes:
+- **ThreadPoolExecutor** is used to handle **parallel API calls** in Python. Each batch is processed concurrently by different threads, leading to improved throughput.
+- **Resumption of Job**: The job will always continue from the last successfully processed record based on the checkpoint file.
+- **API Call Limitations**: Make sure that the API can handle the parallel requests, especially in cases where API rate limits may be enforced.
+
+This Python solution should provide the same functionality as the Java version, with a focus on **parallel processing**, **retry logic**, and **checkpointing**.
