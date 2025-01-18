@@ -1,6 +1,6 @@
 # Spark Parallel JSON Message Processing
 
-Yes, the solution I provided above **does use parallel processing**, but it's working at the **partition level**. Let me explain how it works and where parallelism fits in, followed by a potential optimization for better performance using true **parallel processing** with **checkpointing**.
+Yes, the solution **does use parallel processing**, but it's working at the **partition level**. Let me explain how it works and where parallelism fits in, followed by a potential optimization for better performance using true **parallel processing** with **checkpointing**.
 
 ### Explanation of Parallelism in the Current Solution
 
