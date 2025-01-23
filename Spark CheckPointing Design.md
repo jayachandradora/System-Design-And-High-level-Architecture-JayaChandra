@@ -190,6 +190,9 @@ In this explanation, we'll break down:
 ### 1. **What is a Lineage Graph?**
 A lineage graph is essentially a directed acyclic graph (DAG) that models the relationships and dependencies between nodes (entities). In the context of data processing, it’s used to track the transformations or operations applied to data over time. Each node in the graph represents a piece of data or an operation, and directed edges show the flow or transformation from one operation to another.
 
+![image](https://github.com/user-attachments/assets/5baceb04-d95a-4b53-bec4-378b9c6d4dad)
+
+
 - **Nodes**: These represent entities, which could be data, operations, or stages in a pipeline.
 - **Edges**: These represent dependencies or transformations from one node to another.
 
