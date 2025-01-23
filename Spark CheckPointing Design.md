@@ -1,5 +1,7 @@
 # Spark CheckPointing Design & Internals - spark.sparkContext.setCheckpointDir(checkpoint_dir) 
 
+Refer this link :  https://sparkbyexamples.com/spark/what-is-lineage-graph-in-spark/
+
 In Azure Databricks (or any Spark environment), the `spark.sparkContext.setCheckpointDir(checkpoint_dir)` method is used to set a directory where Spark can store checkpoint information. This is particularly important when using **RDDs** (Resilient Distributed Datasets) or **DataFrames** that involve **long-running operations** or iterative algorithms (like those in machine learning or graph processing).
 
 ### Here's how it works:
