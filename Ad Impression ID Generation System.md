@@ -195,3 +195,26 @@ Finding and tracking ad impression IDs in a distributed system can be complex du
 6. **Analysis:** Use querying and visualization tools to analyze ad impressions and generate insights.
 
 By following these strategies, you can effectively find, track, and manage ad impression IDs in a distributed system, ensuring reliable and scalable ad impression processing and analysis.
+
+```mermaid
+flowchart TB
+    A[Client Sends Request with Impression Data] --> B{Does Impression ID Exist?}
+    
+    subgraph Redis/DynamoDB Store
+        B
+    end
+
+    B -- No --> C[Generate or Accept Impression ID]
+    C --> D[Store Impression ID with TTL]
+    D --> E[Process Impression]
+    E --> F[Store Processing Result Optional]
+    F --> G[Return Success Response]
+
+    B -- Yes --> H[Return Cached Result or Skip Processing]
+    H --> G
+
+    subgraph Final/Return success
+       F & H
+    end
+
+```
