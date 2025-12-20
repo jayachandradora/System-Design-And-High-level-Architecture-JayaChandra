@@ -319,11 +319,360 @@ This is the **brain** of the system.
 
 ---
 
-If you want, I can:
+Below is a **deep, step-by-step flow explanation** of **how vendor feeds enter the system, how pricing & promotions are decided in real time, and how the final promotion reaches the customer at purchase time**—mapped exactly to your architecture.
 
-* Draw a **system design diagram**
-* Convert this into **interview-ready explanation**
-* Map this to **AWS / GCP services**
-* Provide **sample Storm + Kafka flow**
+I’ll explain this **from data ingestion → decisioning → checkout**, using **retail-real examples**.
 
-Just tell me 👍
+---
+
+# 1️⃣ Vendor & Source Feeds (Entry Point)
+
+### Sources That Send Data
+
+Different systems continuously push data:
+
+| Source              | Example Events                  |
+| ------------------- | ------------------------------- |
+| Vendors / Suppliers | Cost price updates, MOQ changes |
+| POS systems         | Item sold, quantity, store id   |
+| Web / Mobile App    | Cart add/remove, search views   |
+| Inventory system    | Stock in/out                    |
+| Competitor feeds    | External price comparison       |
+| Promo admin UI      | Rule creation or changes        |
+
+---
+
+## 🔹 Example Vendor Feed (Cost Update)
+
+Vendor sends:
+
+```json
+{
+  "vendorId": "V123",
+  "sku": "SKU789",
+  "newCost": 420,
+  "effectiveFrom": "2025-12-20T10:00:00Z"
+}
+```
+
+---
+
+# 2️⃣ API Gateway (Ingestion Layer)
+
+### Responsibilities
+
+* Authentication & authorization
+* Rate limiting (vendors can flood data)
+* Schema validation
+* Routing to Kafka
+
+### What Happens
+
+1. Vendor feed hits `/vendor/cost-update`
+2. Gateway validates token
+3. Adds metadata:
+
+```json
+{
+  "source": "vendor",
+  "receivedAt": "2025-12-20T10:00:05Z"
+}
+```
+
+4. Publishes event to Kafka
+
+---
+
+# 3️⃣ Kafka Topics (Event Backbone)
+
+Each event type goes to a **dedicated topic**.
+
+| Topic                 | Purpose               |
+| --------------------- | --------------------- |
+| `vendor_cost_updates` | Supplier pricing      |
+| `sales_events`        | POS / checkout        |
+| `inventory_events`    | Stock changes         |
+| `promo_rules`         | Promotion definitions |
+| `competitor_prices`   | External pricing      |
+
+Kafka guarantees:
+
+* High throughput (20k+/sec)
+* Ordered processing per SKU
+* Replayability
+
+---
+
+## 🔹 Kafka Message Example
+
+```json
+{
+  "sku": "SKU789",
+  "cost": 420,
+  "vendorId": "V123"
+}
+```
+
+---
+
+# 4️⃣ Apache Storm (Real-Time Processing Core)
+
+Storm consumes Kafka streams and processes **in milliseconds**.
+
+---
+
+## 4.1 Normalization Bolt (First Step)
+
+### Purpose
+
+* Convert all incoming feeds into a **common internal format**
+* Enrich with cached data (category, brand, tax)
+
+### Output Example
+
+```json
+{
+  "sku": "SKU789",
+  "cost": 420,
+  "category": "Electronics",
+  "tax": 18
+}
+```
+
+---
+
+## 4.2 Pricing Engine Bolt
+
+### Inputs
+
+* Base price
+* Current promotions
+* Competitor prices
+* Demand velocity
+
+### Logic
+
+* Decide **base effective price**
+* Apply promo discount if eligible
+
+```text
+Base Price = 799
+Promo Discount = 20%
+Effective Price = 639
+```
+
+---
+
+## 4.3 Cost & Margin Engine Bolt (Profit Guard)
+
+### Inputs
+
+* Vendor cost
+* Logistics
+* Tax
+* Effective price
+
+### Margin Calculation
+
+```
+Margin % = (Price - Cost - Logistics - Tax) / Price
+```
+
+### Decision
+
+* If margin ≥ 30% → continue
+* If margin < 30% → adjust or block
+
+🔹 Example:
+
+```
+Margin = 26% ❌
+Discount reduced from 20% → 12%
+```
+
+---
+
+## 4.4 Forecasting Engine Bolt
+
+### Purpose
+
+Predict **what will happen if promo continues**.
+
+### Uses
+
+* Recent sales velocity
+* Past promo uplift
+* Time of day
+
+### Output
+
+```json
+{
+  "expectedSalesPerHour": 320,
+  "stockOutInMinutes": 45
+}
+```
+
+---
+
+# 5️⃣ Promotion Decision Engine (Central Brain)
+
+### Inputs from Storm
+
+* Adjusted price
+* Margin status
+* Inventory forecast
+* Promotion rules
+
+### Decisions Made
+
+* Approve promo
+* Modify discount
+* End promo early
+* Switch promo type
+
+### Output Decision
+
+```json
+{
+  "sku": "SKU789",
+  "finalPrice": 679,
+  "promoType": "FLASH_SALE",
+  "validFor": "15 minutes"
+}
+```
+
+---
+
+# 6️⃣ Price Publish Service
+
+### Role
+
+* Convert decisions into **customer-consumable prices**
+* Push to cache
+* Notify downstream systems
+
+### Actions
+
+* Publish to `price_updates` Kafka topic
+* Update Redis cache
+* Send webhook to POS & UI
+
+---
+
+# 7️⃣ Cache (Redis) – Ultra-Fast Access
+
+### Why Redis?
+
+* Cart & checkout require **<10ms reads**
+* Prices change frequently
+
+### Cache Key Example
+
+```
+price:SKU789:STORE12
+```
+
+### Cached Value
+
+```json
+{
+  "price": 679,
+  "promoLabel": "Flash Sale",
+  "expiresAt": "10:15"
+}
+```
+
+---
+
+# 8️⃣ Customer Purchase Flow (End-to-End)
+
+### Step-by-Step
+
+1. Customer opens app / POS scans item
+2. UI calls:
+
+```
+GET /price?sku=SKU789
+```
+
+3. Backend reads from Redis
+4. Displays:
+
+```
+₹679 – Flash Sale (15 mins left)
+```
+
+---
+
+## 🛒 Cart & Checkout Validation
+
+At checkout:
+
+* System **re-validates price**
+* Ensures promo still active
+* Locks price for order
+
+### Order Event Sent Back
+
+```json
+{
+  "orderId": "ORD123",
+  "sku": "SKU789",
+  "price": 679
+}
+```
+
+➡ Sent to Kafka → Storm updates demand & inventory
+
+---
+
+# 9️⃣ Feedback Loop (Self-Correcting System)
+
+Every purchase feeds back into:
+
+* Demand forecasting
+* Inventory consumption
+* Promo effectiveness
+
+This allows:
+
+* Dynamic discount tuning
+* Early promo shutdown
+* Margin protection
+
+---
+
+# 🔄 End-to-End Flow Summary
+
+```
+Vendor Feed → API Gateway → Kafka
+→ Storm (Pricing + Cost + Forecast)
+→ Promotion Decision Engine
+→ Price Publish Service
+→ Redis Cache
+→ UI / POS
+→ Customer Purchase
+→ Kafka (Feedback Loop)
+```
+
+---
+
+## ✅ Why This Works in Real Retail
+
+* Handles **vendor cost changes instantly**
+* Adjusts promotions mid-sale
+* Guarantees **30%+ margin**
+* Supports flash sales & peak traffic
+* Real-time personalization ready
+
+---
+
+If you want next:
+
+* **Concrete example with numbers**
+* **Failure scenarios & recovery**
+* **AWS/GCP deployment mapping**
+* **Interview explanation format**
+
+Just tell me which one you want 👍
