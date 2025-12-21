@@ -1722,3 +1722,352 @@ If you want next, I can:
 Just tell me where to go next 🚀
 
 
+Below is a **clear, enterprise-grade sequence flow and component-level view** for **a single SKU during an active promotion**, showing **who talks to whom, in what order, and why**.
+
+I’ll keep it **concrete, step-by-step**, exactly how this runs in production.
+
+---
+
+# 1. Component-Level View (Single SKU Focus)
+
+```
+┌──────────────────────────┐
+│ Event Producers           │
+│ ─ Orders / Clickstream    │
+│ ─ Inventory Service       │
+│ ─ Competitor Feed         │
+│ ─ Promo Config Service    │
+└─────────────┬────────────┘
+              v
+════════════════════════════
+        Kafka Event Mesh
+════════════════════════════
+│ raw.demand.events         │
+│ raw.inventory.events      │
+│ raw.competitor.prices     │
+│ promo.config.events       │
+════════════════════════════
+              |
+              v
+════════════════════════════
+  Flink Streaming Platform
+════════════════════════════
+│ Normalize & Enrich        │
+│ Feature Builder           │
+│ Pricing Engine            │
+│ Margin Guardrail          │
+│ Forecasting / ML          │
+│ Promotion Policy Engine   │
+│ Decision Explainer        │
+════════════════════════════
+              |
+              v
+════════════════════════════
+ Price Publishing Layer
+════════════════════════════
+│ Redis (hot price cache)   │
+│ pricing.decisions (Kafka) │
+════════════════════════════
+              |
+              v
+════════════════════════════
+ Cart / Checkout / APIs
+════════════════════════════
+```
+
+---
+
+# 2. Sequence Flow (Single SKU During Promo)
+
+### Scenario
+
+**SKU-123** is under a **20% discount promotion**
+Sudden **demand spike** occurs due to traffic surge.
+
+---
+
+## Step-by-Step Sequence
+
+---
+
+### **Step 1: Demand Event Arrives**
+
+**Component:** Clickstream / Order Service
+**Event:** Customer views / adds SKU-123 to cart
+
+```
+{
+  sku: "SKU-123",
+  event_type: "VIEW",
+  timestamp: T1
+}
+```
+
+➡️ **Published to Kafka** → `raw.demand.events`
+
+---
+
+### **Step 2: Event Normalization**
+
+**Component:** Flink – Normalize & Enrich
+
+Actions:
+
+* Validate SKU
+* Standardize timestamp
+* Enrich with:
+
+  * Base price
+  * Cost
+  * Active promo config
+
+Output → internal stream
+
+---
+
+### **Step 3: Real-Time Feature Update**
+
+**Component:** Feature Builder (stateful)
+
+For SKU-123:
+
+* Update demand velocity (rolling 5/15/60 min)
+* Update conversion rate
+* Update inventory pressure
+
+State example:
+
+```
+demand_velocity_5m = +42%
+inventory_remaining = 820 units
+```
+
+---
+
+### **Step 4: Pricing Engine Calculation**
+
+**Component:** Pricing Engine
+
+Logic:
+
+* Base price = $100
+* Promo discount = 20% → -$20
+* Demand surge adjustment = +$5
+
+Candidate price:
+
+```
+$100 - $20 + $5 = $85
+```
+
+➡️ Passed downstream as **candidate price**
+
+---
+
+### **Step 5: Margin Guardrail Check**
+
+**Component:** Margin Guardrail Engine
+
+Inputs:
+
+* Cost = $60
+* Candidate price = $85
+
+Margin:
+
+```
+(85 - 60) / 85 = 29.4%
+```
+
+❌ Below 30% threshold
+
+Action:
+
+* Reduce discount
+* Recalculate price
+
+Adjusted price:
+
+```
+$90 → margin = 33%
+```
+
+➡️ Emits alert (non-critical)
+➡️ Passes corrected price
+
+---
+
+### **Step 6: Forecasting & ML Inference**
+
+**Component:** Forecasting Engine
+
+Inputs:
+
+* Adjusted price
+* Updated demand velocity
+* Inventory
+
+Predictions:
+
+```
+Expected sales/hour: 120 units
+Inventory depletion ETA: 6.8 hours
+Revenue vs margin curve: safe
+```
+
+---
+
+### **Step 7: Promotion Policy Decision**
+
+**Component:** Promotion Policy Engine
+
+Rules evaluated:
+
+* Margin safe? ✅
+* Stockout risk? ❌
+* Revenue upside? Moderate
+
+Decision:
+
+* Keep promo active
+* Reduce discount from 20% → 15%
+
+Decision code:
+
+```
+PROMO_MODIFY_DISCOUNT
+```
+
+---
+
+### **Step 8: Decision Explainability**
+
+**Component:** Decision Explainer
+
+Generated record:
+
+```
+{
+  sku: "SKU-123",
+  decision: "MODIFY_DISCOUNT",
+  old_discount: 20%,
+  new_discount: 15%,
+  reason: "DEMAND_SPIKE_MARGIN_PROTECTION",
+  margin_after: 33%,
+  timestamp: T1
+}
+```
+
+➡️ Published to `audit.decision.logs`
+
+---
+
+### **Step 9: Price Publish**
+
+**Component:** Publish Price Sink
+
+Actions:
+
+* Write final price ($90) to Redis
+* Emit pricing decision to Kafka
+
+TTL in Redis:
+
+```
+5 seconds
+```
+
+---
+
+### **Step 10: Cart / Checkout Reads Price**
+
+**Component:** Cart Service
+
+* Reads SKU-123 price from Redis
+* Sub-millisecond response
+* Customer sees updated price
+
+---
+
+## 3. Visual Sequence Diagram (Textual)
+
+```
+Clickstream
+   |
+   v
+Kafka
+   |
+   v
+Normalize & Enrich
+   |
+   v
+Feature Builder
+   |
+   v
+Pricing Engine
+   |
+   v
+Margin Guardrail (override?)
+   |
+   v
+Forecasting / ML
+   |
+   v
+Promotion Policy Engine
+   |
+   v
+Decision Explainer
+   |
+   v
+Redis + Kafka
+   |
+   v
+Cart / Checkout
+```
+
+---
+
+# 4. Key Enterprise Characteristics Shown
+
+### Real-Time
+
+* End-to-end decision in milliseconds
+
+### Safe
+
+* Margin guardrail cannot be bypassed
+
+### Intelligent
+
+* Forecasts influence decisions
+
+### Auditable
+
+* Every step logged and replayable
+
+### Scalable
+
+* SKU-level isolation via partitioning
+
+---
+
+# 5. Why This Flow Is Enterprise-Grade
+
+✔ Handles spikes safely
+✔ Prevents margin leakage
+✔ Adapts promotion dynamically
+✔ Explains every decision
+✔ Supports replay & debugging
+
+---
+
+If you want next, I can:
+
+* Draw **multi-SKU concurrency behavior**
+* Show **failure scenarios & recovery**
+* Provide **Flink job pseudocode**
+* Add **A/B testing flow inside promo engine**
+
+Just tell me what you want to dive into next 👌
+
+
