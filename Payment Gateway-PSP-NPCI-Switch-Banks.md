@@ -1110,4 +1110,506 @@ Say this if asked:
 
 ---
 
+Below is a **clean, interview-ready set of SAMPLE APIs + contracts** that cover the **entire UPI payment journey**, exactly in this order:
+
+```
+PSP
+ → NPCI Switch
+   → Issuer Bank (Debit)
+     → NPCI
+       → Acquirer Bank (Credit)
+         → NPCI
+           → PSP
+```
+
+These are **logical APIs** (not exact NPCI specs), but **accurate enough for system-design interviews** and show **protocol thinking**, which interviewers care about.
+
+---
+
+# 0️⃣ Common Principles (Say This First)
+
+Before APIs, state these assumptions:
+
+* All APIs are **idempotent**
+* `txn_id` is **globally unique**
+* Mutual TLS + message signing
+* Synchronous request, async reconciliation
+
+📌 **Senior signal**
+
+> “APIs are deterministic and replay-safe.”
+
+---
+
+# 1️⃣ PSP → NPCI
+
+### Initiate Payment
+
+### API
+
+```
+POST /npci/upi/pay
+```
+
+### Request
+
+```json
+{
+  "txn_id": "TXN123",
+  "payer_vpa": "alice@hdfc",
+  "payee_vpa": "bob@icici",
+  "amount": 100.00,
+  "currency": "INR",
+  "psp_id": "GPay",
+  "timestamp": "2025-01-01T10:00:00Z"
+}
+```
+
+### Response (Immediate)
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "PENDING",
+  "npci_ref_id": "NPCI456"
+}
+```
+
+📌 NPCI only **acknowledges receipt**, not outcome.
+
+---
+
+# 2️⃣ NPCI → Issuer Bank
+
+### Debit Request (Payer Bank)
+
+### API
+
+```
+POST /bank/issuer/debit
+```
+
+### Request
+
+```json
+{
+  "txn_id": "TXN123",
+  "payer_account": "HDFC-ACC-001",
+  "amount": 100.00,
+  "currency": "INR",
+  "npci_ref_id": "NPCI456"
+}
+```
+
+### Possible Responses
+
+#### Success
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "DEBIT_SUCCESS"
+}
+```
+
+#### Failure
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "DEBIT_FAILED",
+  "reason": "INSUFFICIENT_FUNDS"
+}
+```
+
+📌 Issuer bank **must be idempotent on txn_id**.
+
+---
+
+# 3️⃣ Issuer Bank → NPCI
+
+### Debit Result Callback
+
+### API
+
+```
+POST /npci/issuer/debit-result
+```
+
+### Request
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "DEBIT_SUCCESS",
+  "bank_ref_id": "HDFC789"
+}
+```
+
+NPCI updates transaction state.
+
+---
+
+# 4️⃣ NPCI → Acquirer Bank
+
+### Credit Request (Payee Bank)
+
+### API
+
+```
+POST /bank/acquirer/credit
+```
+
+### Request
+
+```json
+{
+  "txn_id": "TXN123",
+  "payee_account": "ICICI-ACC-009",
+  "amount": 100.00,
+  "currency": "INR",
+  "npci_ref_id": "NPCI456"
+}
+```
+
+### Response
+
+#### Success
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "CREDIT_SUCCESS"
+}
+```
+
+#### Failure
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "CREDIT_FAILED",
+  "reason": "ACCOUNT_BLOCKED"
+}
+```
+
+📌 Credit is also **idempotent**.
+
+---
+
+# 5️⃣ Acquirer Bank → NPCI
+
+### Credit Result Callback
+
+### API
+
+```
+POST /npci/acquirer/credit-result
+```
+
+### Request
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "CREDIT_SUCCESS",
+  "bank_ref_id": "ICICI555"
+}
+```
+
+NPCI marks transaction **COMPLETED**.
+
+---
+
+# 6️⃣ NPCI → PSP
+
+### Final Transaction Status
+
+### API
+
+```
+POST /psp/upi/payment-status
+```
+
+### Request
+
+```json
+{
+  "txn_id": "TXN123",
+  "final_status": "SUCCESS",
+  "completed_at": "2025-01-01T10:00:02Z"
+}
+```
+
+### PSP Updates User
+
+```
+“₹100 paid successfully to bob@icici”
+```
+
+---
+
+# 7️⃣ PSP → NPCI (If Timeout)
+
+### Status Query (Critical for Correctness)
+
+### API
+
+```
+GET /npci/upi/status?txn_id=TXN123
+```
+
+### Response
+
+```json
+{
+  "txn_id": "TXN123",
+  "status": "DEBIT_SUCCESS_CREDIT_PENDING"
+}
+```
+
+📌 This resolves **ambiguity under failure**.
+
+---
+
+# How Correctness Is Preserved Across APIs
+
+| Risk            | Protection                |
+| --------------- | ------------------------- |
+| Duplicate retry | txn_id idempotency        |
+| Timeout         | Status API                |
+| Double debit    | Bank uniqueness           |
+| Partial success | Reversal & reconciliation |
+
+---
+
+# What to Highlight in Interview (VERY IMPORTANT)
+
+Say these explicitly:
+
+* `txn_id` flows through **every API**
+* NPCI is **state coordinator**, not executor
+* Banks own **ledger correctness**
+* PSP owns **user experience**
+* Reconciliation handles rare mismatches
+
+---
+
+# One-Line Senior Summary (Memorize This)
+
+> “UPI correctness comes from deterministic APIs, global transaction IDs, and bank-side idempotency — not from distributed transactions.”
+
+---
+
+# Kafka Uses Scenarios
+
+This is a **very strong staff / principal-level question**.
+Short answer: **NO — it cannot be only synchronous APIs at UPI scale.**
+Real systems use a **hybrid of synchronous APIs + asynchronous messaging (Kafka-like systems)**.
+
+Below is the **correct mental model**, how to explain it in interview, and **where Kafka fits** in **PSP ↔ NPCI ↔ Bank**.
+
+---
+
+# Short Direct Answer (Say This First)
+
+> “At UPI scale, **synchronous APIs alone don’t scale or survive failures**.
+> The system uses **synchronous APIs for authorization** and **asynchronous messaging for reliability, throughput, and recovery**.”
+
+This statement alone signals **15+ years maturity**.
+
+---
+
+# Why Pure API-Based Communication Is Not Enough
+
+### Problems at Millions RPS
+
+| Problem        | Why APIs Fail      |
+| -------------- | ------------------ |
+| Traffic spikes | Thread exhaustion  |
+| Bank slowness  | Cascading failures |
+| Network blips  | Ambiguous outcomes |
+| Retry storms   | Duplicate load     |
+| Reconciliation | No event history   |
+
+📌 **Senior signal**
+
+> “APIs couple availability across systems.”
+
+---
+
+# The Correct Architecture: Hybrid Model
+
+```
+Client / PSP
+   |
+Sync API (Fast Path)
+   |
+NPCI
+   |
+Async Event Bus (Kafka)
+   |
+Banks
+```
+
+---
+
+# Where APIs Are Used (Synchronous – Fast Path)
+
+### Purpose
+
+* Immediate authorization
+* User feedback
+* Low-latency checks
+
+### Examples
+
+* PSP → NPCI: initiate payment
+* NPCI → Issuer Bank: debit request
+* NPCI → Acquirer Bank: credit request
+
+📌 Characteristics:
+
+* Short timeout (100–300ms)
+* Strict SLA
+* Idempotent
+
+---
+
+# Where Kafka / Messaging Is Used (Asynchronous – Safe Path)
+
+### Purpose
+
+* Absorb traffic spikes
+* Decouple systems
+* Ensure durability
+* Enable replay & reconciliation
+
+---
+
+## 1️⃣ Transaction Event Stream
+
+After API acceptance:
+
+```
+PaymentInitiatedEvent
+DebitCompletedEvent
+CreditCompletedEvent
+```
+
+These events are published to Kafka.
+
+📌 Used for:
+
+* Audit
+* Monitoring
+* Recovery
+
+---
+
+## 2️⃣ Retry & Deferred Processing
+
+### Scenario
+
+* Bank API is slow or down
+
+### Flow
+
+1. NPCI enqueues request to Kafka
+2. Bank consumes at its capacity
+3. Backpressure is handled naturally
+
+📌 Kafka = shock absorber
+
+---
+
+## 3️⃣ Reconciliation & Settlement
+
+Kafka topics drive:
+
+* Daily settlement
+* Mismatch detection
+* Dispute resolution
+
+📌 **Senior highlight**
+
+> “Kafka is the source of truth for post-facto correctness.”
+
+---
+
+## 4️⃣ PSP Notification & UI Updates
+
+* NPCI publishes status events
+* PSP consumes and updates UI
+
+📌 Avoids polling storms.
+
+---
+
+# How Exactly-Once Is Maintained with Kafka
+
+| Layer    | Mechanism           |
+| -------- | ------------------- |
+| API      | txn_id idempotency  |
+| Kafka    | Partition by txn_id |
+| Consumer | Dedup table         |
+| DB       | Unique constraints  |
+
+📌 Say explicitly:
+
+> “Kafka does not give business-level exactly-once — the application does.”
+
+---
+
+# High-Throughput Design Pattern
+
+```
+Sync API (happy path)
+   ↓
+Persist state
+   ↓
+Publish event
+   ↓
+Async consumers
+```
+
+This is called **Command + Event** architecture.
+
+---
+
+# Realistic Throughput Strategy
+
+| Component | Scale Method           |
+| --------- | ---------------------- |
+| APIs      | Horizontal autoscaling |
+| Kafka     | Partitioning           |
+| Banks     | Consumer groups        |
+| NPCI      | Load-shed + queues     |
+
+---
+
+# What NOT to Say in Interview ❌
+
+* “Kafka replaces APIs”
+* “Everything is async”
+* “Kafka guarantees exactly-once”
+
+These are **red flags**.
+
+---
+
+# What to Emphasize as 15+ Years Engineer ✅
+
+✔ Hybrid architecture
+✔ Backpressure handling
+✔ Failure isolation
+✔ Event replay
+✔ Operational recovery
+
+---
+
+# One-Line Senior Summary (Memorize)
+
+> “UPI-scale systems use APIs for real-time authorization and Kafka for durability, scalability, and correctness under failure.”
+
 
