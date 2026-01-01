@@ -667,13 +667,198 @@ Used for:
 
 ---
 
-If you want next, I can:
+# Redis Locks in Booking
 
-* Add **indexes & sharding strategies**
-* Explain **how inventory consistency is maintained**
-* Design **Kafka event schemas**
-* Draw **ER diagrams**
-* Optimize this for **millions of bookings/day**
+Let’s deep-dive into **how Redis is used for booking locks** in your system, step by step, including **use cases, Java implementation, and best practices**. I’ll make it practical and “production-ready” like your DB design.
 
-Just tell me what you want to go deeper on 🚀
+---
+
+# **1. Purpose of Redis Locks in Booking**
+
+In a hotel booking system, **inventory consistency is critical**. For example:
+
+* Two users try to book the **last available room** at the same time.
+* Without a lock, **both could succeed**, causing **overbooking**.
+* Redis is used as a **distributed lock** system to prevent this.
+
+Redis is perfect because:
+
+* Extremely fast (`O(1)` get/set operations)
+* Supports **atomic operations** (`SETNX`, `GETSET`)
+* Can work **across multiple app instances** (distributed environment)
+
+---
+
+# **2. Use Cases for Redis Locks**
+
+### a) **Inventory Locking**
+
+Before a booking is confirmed:
+
+1. Lock the room for the requested date(s)
+2. Reduce available inventory
+3. Process payment
+4. Release lock after success or rollback
+
+### b) **Idempotency**
+
+If a booking request retries (network issues, client retry):
+
+* Use Redis key per booking attempt
+* Ensure **duplicate bookings are not created**
+
+### c) **Timeouts**
+
+* Prevent deadlocks
+* Automatically release locks if user abandons booking
+
+---
+
+# **3. Redis Lock Implementation Concepts**
+
+### **Key Structure**
+
+```text
+lock:room:{room_id}:{date}
+```
+
+* `{room_id}` – the room being booked
+* `{date}` – the date of the stay
+* Value – usually **UUID or timestamp**, used to **ensure only the owner releases**
+
+---
+
+### **Redis Commands Used**
+
+1. **SET key value NX PX 5000**
+
+   * `NX` → only set if key does **not exist**
+   * `PX` → expiration in milliseconds (auto-release)
+
+   ```bash
+   SET lock:room:101:2026-01-01 "uuid-1234" NX PX 5000
+   ```
+2. **DEL key** → release lock after successful booking
+3. **Lua script** → safe unlock (ensure only the owner can release)
+
+---
+
+# **4. Step-by-Step Flow in Java**
+
+Here’s a practical flow for **booking a room with Redis lock**.
+
+### **Step 1: Acquire Lock**
+
+```java
+String lockKey = "lock:room:" + roomId + ":" + date;
+String lockValue = UUID.randomUUID().toString(); // unique owner
+int expireTimeMs = 5000; // 5 seconds
+
+Boolean isLocked = jedis.set(lockKey, lockValue, SetParams.setParams().nx().px(expireTimeMs));
+
+if (Boolean.FALSE.equals(isLocked)) {
+    throw new RuntimeException("Room is currently being booked. Try again later.");
+}
+```
+
+* If `isLocked` is false → another user is booking, fail fast
+* If true → proceed to Step 2
+
+---
+
+### **Step 2: Check Inventory**
+
+```java
+int availableRooms = roomInventoryRepository.getAvailableRooms(roomId, date);
+if (availableRooms <= 0) {
+    releaseLock(lockKey, lockValue);
+    throw new RuntimeException("No rooms available");
+}
+```
+
+---
+
+### **Step 3: Create Booking (ACID Transaction)**
+
+```java
+Booking booking = new Booking();
+booking.setRoomId(roomId);
+booking.setUserId(userId);
+booking.setCheckInDate(date);
+booking.setStatus("PENDING");
+bookingRepository.save(booking);
+
+// Reduce inventory
+roomInventoryRepository.decrementAvailable(roomId, date);
+```
+
+---
+
+### **Step 4: Release Lock Safely**
+
+```java
+private void releaseLock(String key, String value) {
+    String luaScript = "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+                       "return redis.call('del', KEYS[1]) " +
+                       "else return 0 end";
+    jedis.eval(luaScript, Collections.singletonList(key), Collections.singletonList(value));
+}
+```
+
+* Only releases **if the lock is still owned by this thread** (prevents accidentally deleting another user’s lock)
+
+---
+
+# **5. Handling Timeouts and Retries**
+
+* Set `PX` (expire) to auto-release lock if something goes wrong
+* Retry a few times if `SETNX` fails, with **exponential backoff**
+* Optionally, implement a **queue** for high-demand rooms
+
+---
+
+# **6. Flow Diagram (Logical)**
+
+```text
+User Request → Check Redis Lock
+        │
+        ├─ Locked? → Fail / Retry
+        │
+        └─ Acquire Lock
+             │
+        Check Inventory
+             │
+        Available? → Fail + Release Lock
+             │
+        Create Booking (DB Transaction)
+             │
+        Reduce Inventory
+             │
+        Release Lock
+             │
+        Respond Success
+```
+
+---
+
+# **7. Benefits of This Approach**
+
+1. **Prevent overbooking** → ensures accurate inventory
+2. **Fast** → Redis is in-memory, milliseconds
+3. **Distributed safe** → multiple app instances can coordinate
+4. **Supports high concurrency** → critical during flash sales, peak seasons
+5. **Automatic recovery** → lock auto-expires if something crashes
+
+---
+
+# **8. Production Considerations**
+
+* **Lock expiration**: must be longer than average booking processing time
+* **Deadlock prevention**: use Lua script for safe unlock
+* **Monitoring**: track failed lock attempts → indicates high load
+* **Clustered Redis**: use Redis Cluster or Redisson for high availability
+
+
+
+
 
