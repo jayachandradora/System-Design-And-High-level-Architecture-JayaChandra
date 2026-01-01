@@ -332,3 +332,348 @@ Handling distributed transactions in distributed systems is crucial for ensuring
 - **Monitoring and Logging**: Implement robust monitoring and logging to track transactional states and diagnose issues.
 
 Each pattern and strategy has its strengths and trade-offs, so the choice depends on factors such as transactional complexity, scalability requirements, fault tolerance, and desired consistency guarantees in your distributed system architecture.
+
+# DB Design based on Apps level
+
+Below is a **complete, practical DB design** mapped to this architecture, broken down **per app/service**, with **table schemas, keys, and reasoning**.
+This is **interview-ready** and also realistic for production systems.
+
+I’ll organize it by **logical plane + storage technology**.
+
+---
+
+# 1. Hotel Manager App (Control Plane)
+
+### Primary DB: **Hotel DB (MySQL)**
+
+Purpose: **authoritative source of truth for hotel configuration**
+
+### Core Tables
+
+## `hotels`
+
+```sql
+hotels (
+  hotel_id        BIGINT PK,
+  name            VARCHAR(255),
+  description     TEXT,
+  address         TEXT,
+  city            VARCHAR(100),
+  country         VARCHAR(100),
+  latitude        DECIMAL(9,6),
+  longitude       DECIMAL(9,6),
+  status          ENUM('ACTIVE','INACTIVE'),
+  created_at      TIMESTAMP,
+  updated_at      TIMESTAMP
+)
+```
+
+---
+
+## `rooms`
+
+```sql
+rooms (
+  room_id         BIGINT PK,
+  hotel_id        BIGINT FK,
+  room_type       VARCHAR(100),
+  capacity        INT,
+  base_price      DECIMAL(10,2),
+  total_rooms     INT,
+  created_at      TIMESTAMP,
+  updated_at      TIMESTAMP
+)
+```
+
+---
+
+## `room_inventory`
+
+*(Date-based inventory control)*
+
+```sql
+room_inventory (
+  inventory_id    BIGINT PK,
+  room_id         BIGINT FK,
+  date            DATE,
+  available_rooms INT,
+  price           DECIMAL(10,2),
+  created_at      TIMESTAMP,
+  updated_at      TIMESTAMP,
+  UNIQUE(room_id, date)
+)
+```
+
+---
+
+## `hotel_amenities`
+
+```sql
+hotel_amenities (
+  hotel_id        BIGINT FK,
+  amenity         VARCHAR(100),
+  PRIMARY KEY (hotel_id, amenity)
+)
+```
+
+---
+
+## `hotel_images`
+
+```sql
+hotel_images (
+  image_id        BIGINT PK,
+  hotel_id        BIGINT FK,
+  image_url       VARCHAR(500),
+  is_primary      BOOLEAN
+)
+```
+
+---
+
+### Events Published to Kafka
+
+* `HotelCreated`
+* `HotelUpdated`
+* `RoomInventoryUpdated`
+* `PriceUpdated`
+
+These events **feed Search and downstream systems**.
+
+---
+
+# 2. Search App (Read-Optimized)
+
+### Primary Store: **Elasticsearch**
+
+Purpose: **fast, denormalized search**
+
+### Index: `hotels_search_index`
+
+```json
+{
+  "hotel_id": 123,
+  "name": "Ocean View Resort",
+  "city": "Goa",
+  "location": { "lat": 15.2993, "lon": 74.1240 },
+  "amenities": ["POOL", "WIFI", "SPA"],
+  "min_price": 120.00,
+  "rating": 4.5,
+  "available_rooms": 12,
+  "room_types": [
+    {
+      "room_type": "DELUXE",
+      "capacity": 2,
+      "price": 150.00
+    }
+  ]
+}
+```
+
+---
+
+### How Search DB is Built
+
+* Kafka consumer listens to:
+
+  * Hotel DB updates
+  * Inventory updates
+  * Booking events
+* Data is **denormalized**
+* Elasticsearch is **NOT source of truth**
+
+---
+
+# 3. Booking App (Transactional Core)
+
+### Primary DB: **Hotel Booking DB (MySQL)**
+
+Purpose: **ACID transactions**
+
+---
+
+## `bookings`
+
+```sql
+bookings (
+  booking_id      BIGINT PK,
+  user_id         BIGINT,
+  hotel_id        BIGINT,
+  status          ENUM('PENDING','CONFIRMED','CANCELLED','FAILED'),
+  check_in_date   DATE,
+  check_out_date  DATE,
+  total_price     DECIMAL(10,2),
+  created_at      TIMESTAMP,
+  updated_at      TIMESTAMP
+)
+```
+
+---
+
+## `booking_rooms`
+
+```sql
+booking_rooms (
+  booking_room_id BIGINT PK,
+  booking_id      BIGINT FK,
+  room_id         BIGINT FK,
+  price_per_night DECIMAL(10,2)
+)
+```
+
+---
+
+## `payments`
+
+```sql
+payments (
+  payment_id      BIGINT PK,
+  booking_id      BIGINT FK,
+  payment_status  ENUM('INITIATED','SUCCESS','FAILED'),
+  payment_method  VARCHAR(50),
+  transaction_id  VARCHAR(255),
+  amount          DECIMAL(10,2),
+  created_at      TIMESTAMP
+)
+```
+
+---
+
+## `booking_audit_log`
+
+```sql
+booking_audit_log (
+  audit_id        BIGINT PK,
+  booking_id      BIGINT,
+  event_type      VARCHAR(100),
+  created_at      TIMESTAMP
+)
+```
+
+---
+
+### Redis (Booking App)
+
+Purpose:
+
+* Inventory locking
+* Idempotency
+* Fast reads
+
+#### Keys
+
+```text
+lock:room:{room_id}:{date}
+booking_cache:{booking_id}
+```
+
+---
+
+# 4. View Booking App (Read-Heavy)
+
+### Primary Store: **Cassandra**
+
+Purpose:
+
+* High-volume reads
+* Historical data
+* No joins
+
+---
+
+## `booking_by_user`
+
+```sql
+CREATE TABLE booking_by_user (
+  user_id       BIGINT,
+  booking_date  DATE,
+  booking_id    BIGINT,
+  hotel_name    TEXT,
+  status        TEXT,
+  total_price   DECIMAL,
+  PRIMARY KEY (user_id, booking_date, booking_id)
+) WITH CLUSTERING ORDER BY (booking_date DESC);
+```
+
+---
+
+## `booking_by_hotel`
+
+```sql
+CREATE TABLE booking_by_hotel (
+  hotel_id      BIGINT,
+  booking_date  DATE,
+  booking_id    BIGINT,
+  user_id       BIGINT,
+  status        TEXT,
+  PRIMARY KEY (hotel_id, booking_date, booking_id)
+);
+```
+
+---
+
+### Redis (View Booking)
+
+```text
+recent_bookings:user:{user_id}
+```
+
+---
+
+# 5. Analytics / Archival
+
+### Hadoop / Data Lake
+
+Schema (Parquet / ORC):
+
+```text
+booking_id
+hotel_id
+user_id
+booking_date
+revenue
+city
+payment_method
+```
+
+Used for:
+
+* Revenue reports
+* Forecasting
+* ML models
+
+---
+
+# 6. DB Design Summary Table
+
+| App / Service | DB            | Purpose                  |
+| ------------- | ------------- | ------------------------ |
+| Hotel Manager | MySQL         | Source of truth (config) |
+| Search        | Elasticsearch | Fast search              |
+| Booking       | MySQL         | ACID transactions        |
+| Booking       | Redis         | Locks & cache            |
+| View Booking  | Cassandra     | Read-heavy history       |
+| Analytics     | Hadoop        | Long-term analytics      |
+
+---
+
+# 7. Key Design Principles Used
+
+* **CQRS**
+* **Polyglot persistence**
+* **Event-driven sync**
+* **Strong consistency only where needed**
+* **Denormalization for reads**
+
+---
+
+If you want next, I can:
+
+* Add **indexes & sharding strategies**
+* Explain **how inventory consistency is maintained**
+* Design **Kafka event schemas**
+* Draw **ER diagrams**
+* Optimize this for **millions of bookings/day**
+
+Just tell me what you want to go deeper on 🚀
+
