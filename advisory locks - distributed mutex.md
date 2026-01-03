@@ -980,10 +980,7 @@ leaderSelector.start();
 * **If jobs are long-running, multiple jobs, or HA needed** → leader election is better.
 * You can **combine both**: leader pod acquires advisory lock to ensure no double execution even during failover.
 
----
-
-Below is a **clear comparison** of **ShedLock**, **Advisory Lock**, **Optimistic Lock**, and **Pessimistic Lock**.
-I’ve given **bullet summaries** first, followed by a **comparison table** for quick reference.
+# **Clear comparison** of **ShedLock**, **Advisory Lock**, **Optimistic Lock**, and **Pessimistic Lock**.
 
 ---
 
