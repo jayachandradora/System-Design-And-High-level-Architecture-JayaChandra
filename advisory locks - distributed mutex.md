@@ -1251,3 +1251,240 @@ public class RedisScheduledJob {
   * Common in **financial or inventory systems**
   * Example: Bank transactions, seat booking, stock deduction
 
+
+ # **Idempotency** focused on **avoiding repeated requests**
+
+---
+
+## 1️⃣ Data Flow: How Idempotency Avoids Repeated Requests
+
+**Scenario:** Client retries the same request due to network timeout.
+
+### 🔁 Without Idempotency
+
+1. Client sends request
+2. Server processes request
+3. Client times out
+4. Client retries request
+5. Server processes again ❌ (duplicate action)
+
+➡️ Result: **Duplicate records / double counting**
+
+---
+
+### ✅ With Idempotency (Using Idempotency Key)
+
+1. Client generates **Idempotency-Key**
+2. Client sends request with key
+3. Server checks key store (Redis/DB)
+4. **Key not found**
+
+   * Process request
+   * Store result with key
+5. Client retries same request
+6. Server finds key
+7. **Returns cached response**
+
+   * No reprocessing
+
+➡️ Result: **Exactly-once behavior**
+
+---
+
+## 2️⃣ High-Level Idempotency Flow Diagram (Text)
+
+```
+Client
+  │
+  │ POST /click
+  │ Idempotency-Key: abc123
+  ▼
+API Server
+  │
+  │ Check Redis/DB
+  ▼
+Idempotency Store
+  │
+  ├─ Key not found → Process + Save
+  └─ Key found → Return previous response
+```
+
+---
+
+## 3️⃣ Steps to Implement Idempotency (Ad Click Event System)
+
+### 🎯 Use Case
+
+* Prevent **double counting** of ad clicks
+* Handle **retries, refreshes, network failures**
+
+---
+
+### 🧱 Step 1: Client Generates Idempotency Key
+
+* UUID or hash
+* One key per logical action
+
+```
+Idempotency-Key = UUID.randomUUID()
+```
+
+---
+
+### 🧱 Step 2: Client Sends Click Event
+
+```
+POST /ad/click
+Headers:
+  Idempotency-Key: 123e4567
+Body:
+  userId, adId, timestamp
+```
+
+---
+
+## 7️⃣ When NOT to Use Idempotency
+
+* Read-only APIs
+* Streaming events (Kafka handles deduplication differently)
+* Fire-and-forget logging
+
+# Payment vs click idempotency comparison
+
+## 🔁 High-Level Goal
+
+| Aspect          | Payment Idempotency         | Click Idempotency               |
+| --------------- | --------------------------- | ------------------------------- |
+| Primary Goal    | **Prevent double charge**   | **Prevent double count**        |
+| Business Impact | **Critical / irreversible** | Important but less critical     |
+| Failure Cost    | Very high (money loss)      | Medium (analytics/billing skew) |
+
+---
+
+## 🔑 Idempotency Key Characteristics
+
+| Aspect           | Payment                 | Click                           |
+| ---------------- | ----------------------- | ------------------------------- |
+| Key Lifetime     | Long-lived              | Short-lived                     |
+| Key Scope        | Per **payment attempt** | Per **user + ad + time window** |
+| Client Generated | Yes (required)          | Yes (recommended)               |
+| Key Reuse        | Never reused            | May be reused after TTL         |
+| Collision Risk   | Zero tolerance          | Low tolerance                   |
+
+---
+
+## 🧱 Data Flow Differences
+
+### 💳 Payment Idempotency
+
+1. Client initiates payment
+2. Sends **Idempotency-Key**
+3. Server checks persistent store
+4. If exists → return exact same response
+5. If not → charge gateway
+6. Save **request + response + status**
+7. Key retained for long duration
+
+➡️ **Exactly-once monetary action**
+
+---
+
+### 🖱️ Click Idempotency
+
+1. User clicks ad
+2. Client sends click event + key
+3. Server checks Redis
+4. If exists → skip processing
+5. If not → count click
+6. Store key with TTL
+
+➡️ **At-most-once counting**
+
+---
+
+## 🗄️ Storage Strategy
+
+| Aspect       | Payment                 | Click            |
+| ------------ | ----------------------- | ---------------- |
+| Storage Type | Strong DB (SQL)         | Redis / Cache    |
+| Durability   | Persistent              | Ephemeral        |
+| TTL          | Days / Months           | Minutes / Hours  |
+| Data Stored  | Full request + response | Minimal metadata |
+| Cleanup      | Manual / archival       | Automatic        |
+
+---
+
+## ⚙️ Consistency & Guarantees
+
+| Aspect                   | Payment                 | Click             |
+| ------------------------ | ----------------------- | ----------------- |
+| Consistency              | Strong                  | Eventual          |
+| Retry Safety             | Must return same result | Can safely ignore |
+| Partial Failure Handling | Required                | Optional          |
+| Auditing                 | Mandatory               | Rare              |
+
+---
+
+## 🚦 Failure Scenarios
+
+| Scenario                 | Payment                   | Click           |
+| ------------------------ | ------------------------- | --------------- |
+| Client timeout           | Retry returns same charge | Retry ignored   |
+| Server crash mid-process | Resume or reconcile       | May lose count  |
+| Duplicate request        | Always blocked            | Usually blocked |
+| Downstream failure       | Rollback / compensate     | Skip event      |
+
+---
+
+## 🔒 Security & Compliance
+
+| Aspect                  | Payment             | Click       |
+| ----------------------- | ------------------- | ----------- |
+| Compliance              | PCI-DSS, audit logs | None        |
+| Fraud Risk              | High                | Low         |
+| Validation              | Strict              | Relaxed     |
+| Idempotency Enforcement | Mandatory           | Best-effort |
+
+---
+
+## 🧠 Implementation Complexity
+
+| Aspect              | Payment | Click             |
+| ------------------- | ------- | ----------------- |
+| Complexity          | High    | Medium            |
+| Atomicity Required  | Yes     | Yes (but simpler) |
+| Latency Sensitivity | High    | Medium            |
+| Horizontal Scaling  | Harder  | Easier            |
+
+---
+
+## 🧩 Example TTL Strategy
+
+| Use Case        | TTL            |
+| --------------- | -------------- |
+| Card payment    | 7–30 days      |
+| Wallet transfer | Permanent      |
+| Ad click        | 5 min – 24 hrs |
+| Impression      | Seconds        |
+
+---
+
+## 🧠 Rule of Thumb
+
+* **Money involved?** → Strong idempotency, persistent storage
+* **Analytics event?** → Cache-based idempotency
+* **Retry must return exact same response?** → Payment
+* **Duplicate suppression only?** → Click
+
+---
+
+## ✅ Summary
+
+| Dimension  | Payment      | Click        |
+| ---------- | ------------ | ------------ |
+| Guarantee  | Exactly-once | At-most-once |
+| Storage    | Durable DB   | Redis        |
+| TTL        | Long         | Short        |
+| Strictness | Very high    | Medium       |
+
+---
