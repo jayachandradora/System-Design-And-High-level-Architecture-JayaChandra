@@ -982,11 +982,85 @@ leaderSelector.start();
 
 ---
 
-If you want, I can draw a **combined ASCII diagram showing Leader Election + Advisory Lock working together** for high-availability purge jobs — exactly how Netflix/Uber style production systems do it.
+Below is a **clear comparison** of **ShedLock**, **Advisory Lock**, **Optimistic Lock**, and **Pessimistic Lock**.
+I’ve given **bullet summaries** first, followed by a **comparison table** for quick reference.
 
-Do you want me to do that?
+---
 
+## 🔹 Bullet-Point Explanation
 
+### **1. ShedLock**
+
+* Used **only for scheduled tasks** in distributed systems
+* Ensures **only one instance** of a scheduled job runs at a time
+* Works across multiple nodes (microservices / pods)
+* Uses **external storage** (DB, Redis, Mongo, etc.) to manage lock
+* Common in **Spring Boot @Scheduled jobs**
+* Not meant for row-level or transactional locking
+
+**Use case:** Preventing cron jobs from running simultaneously on multiple servers
+
+---
+
+### **2. Advisory Lock**
+
+* A **database-level lock** controlled explicitly by the application
+* Not automatically tied to rows or transactions
+* Can lock **any arbitrary resource** (e.g., user ID, job name)
+* Other sessions must **cooperate** and check the lock
+* Common in PostgreSQL, MySQL
+
+**Use case:** Coordinating work across multiple processes using the same database
+
+---
+
+### **3. Optimistic Lock**
+
+* Assumes **conflicts are rare**
+* No lock during read
+* Uses **versioning or timestamps**
+* Fails on update if data was changed by another transaction
+* Lightweight and scalable
+
+**Use case:** High-read, low-write systems (e.g., REST APIs, web apps)
+
+---
+
+### **4. Pessimistic Lock**
+
+* Assumes **conflicts are likely**
+* Locks data immediately on read
+* Prevents others from reading or writing
+* Can reduce concurrency
+* Implemented via `SELECT ... FOR UPDATE`
+
+**Use case:** Financial transactions, inventory management
+
+---
+
+## 📊 Comparison Table
+
+| Feature             | ShedLock                         | Advisory Lock                  | Optimistic Lock        | Pessimistic Lock          |
+| ------------------- | -------------------------------- | ------------------------------ | ---------------------- | ------------------------- |
+| Purpose             | Prevent duplicate scheduled jobs | Application-controlled locking | Detect write conflicts | Prevent concurrent access |
+| Scope               | Distributed systems              | Database-wide                  | Row-level              | Row-level                 |
+| Lock Type           | External lock (DB/Redis)         | Logical/manual lock            | Version check          | Physical DB lock          |
+| Tied to Transaction | ❌ No                             | ⚠️ Optional                    | ✅ Yes                  | ✅ Yes                     |
+| Blocks Other Reads  | ❌ No                             | ❌ No                           | ❌ No                   | ✅ Sometimes               |
+| Blocks Other Writes | ❌ No                             | ❌ No                           | ❌ No (fails on commit) | ✅ Yes                     |
+| Performance Impact  | Low                              | Low                            | Very Low               | High                      |
+| Failure Handling    | Lock timeout                     | Must release manually          | Retry on failure       | Wait or deadlock          |
+| Common Technologies | Spring ShedLock                  | PostgreSQL, MySQL              | JPA/Hibernate          | SQL, JPA                  |
+| Best For            | Scheduled jobs                   | Cross-process coordination     | High concurrency apps  | Critical data consistency |
+
+---
+
+## 🧠 Quick Recommendation
+
+* **Scheduled jobs?** → **ShedLock**
+* **Cross-service coordination?** → **Advisory Lock**
+* **High concurrency web apps?** → **Optimistic Lock**
+* **Strict consistency (money, stock)?** → **Pessimistic Lock**
 
 
 
