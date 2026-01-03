@@ -1668,4 +1668,62 @@ Object Storage
 * **Short, one-time access?** → Pre-signed URL
 * **High-traffic, cached delivery?** → CDN Signed URL
 
+# Large File Upload with client-side retry (Resumable (Multipart) Upload)
+
+**Best strategy: *Resumable (Multipart) Upload with client-side retry***
+
+### Short, practical strategy
+
+1. **Use multipart / resumable upload**
+
+   * Split file into chunks (e.g., 5–10 MB)
+   * Each chunk uploads independently
+
+2. **Persist upload state on client**
+
+   * Store `uploadId`, uploaded part numbers (localStorage / IndexedDB)
+
+3. **On network disconnect**
+
+   * Stop upload immediately
+   * Keep already uploaded parts (do NOT restart)
+
+4. **On reconnect / page refresh**
+
+   * Client queries server/storage for uploaded parts
+   * Resume from the **last missing chunk**
+
+5. **Finalize upload**
+
+   * Complete multipart upload only after all chunks succeed
+
+---
+
+### Why this is best
+
+* No re-upload of large files
+* Handles flaky networks
+* Works well with **pre-signed URLs**
+* Scales for large files (GBs)
+
+---
+
+### Common real-life stack
+
+* **Browser UI** → Multipart upload
+* **Pre-signed URLs** → Each chunk
+* **S3 / GCS multipart upload**
+* **Client retry with exponential backoff**
+
+---
+
+### What NOT to do
+
+* ❌ Single PUT upload
+* ❌ Restart full upload on failure
+* ❌ Rely only on server retries
+
+**One line summary:**
+👉 *Chunk + resume + retry is the only production-grade solution for unreliable networks.*
+
 
