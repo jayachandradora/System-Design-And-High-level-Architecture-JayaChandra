@@ -1233,4 +1233,21 @@ public class RedisScheduledJob {
 }
 ```
 
+# Use Cases of Optimistic and Pessimistic Locking
+
+* **Optimistic Locking**
+
+  * Use when **conflicts are rare**
+  * Best for **high-read, low-write** systems
+  * Improves **performance and scalability**
+  * Common in **web applications / REST APIs**
+  * Example: User profile updates, content management
+
+* **Pessimistic Locking**
+
+  * Use when **conflicts are frequent**
+  * Best for **critical data consistency**
+  * Prevents concurrent access upfront
+  * Common in **financial or inventory systems**
+  * Example: Bank transactions, seat booking, stock deduction
 
