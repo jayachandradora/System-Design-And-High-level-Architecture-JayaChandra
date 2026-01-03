@@ -1195,4 +1195,42 @@ public class AccountService {
 * **Optimistic Lock** → Version-based conflict detection
 * **Pessimistic Lock** → Blocking row-level lock
 
+# Redis ShedLock Configuration
+```java
+// ===============================
+// Redis ShedLock Configuration
+// ===============================
+
+@Configuration
+@EnableScheduling
+@EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
+public class RedisShedLockConfig {
+
+    @Bean
+    public LockProvider lockProvider(RedisConnectionFactory redisConnectionFactory) {
+        return new RedisLockProvider(redisConnectionFactory);
+    }
+}
+```
+
+```java
+// ===============================
+// Scheduled Job with Redis ShedLock
+// ===============================
+
+@Component
+public class RedisScheduledJob {
+
+    @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(
+        name = "redisScheduledJob",
+        lockAtMostFor = "PT5M",
+        lockAtLeastFor = "PT1M"
+    )
+    public void runJob() {
+        System.out.println("Running job with Redis ShedLock");
+    }
+}
+```
+
 
