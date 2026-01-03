@@ -1668,7 +1668,7 @@ Object Storage
 * **Short, one-time access?** → Pre-signed URL
 * **High-traffic, cached delivery?** → CDN Signed URL
 
-# Large File Upload with client-side retry (Resumable (Multipart) Upload)
+# Large File Upload with client-side retry (Resumable -Multipart Upload)
 
 **Best strategy: *Resumable (Multipart) Upload with client-side retry***
 
