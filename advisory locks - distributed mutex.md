@@ -1062,5 +1062,137 @@ I’ve given **bullet summaries** first, followed by a **comparison table** for 
 * **High concurrency web apps?** → **Optimistic Lock**
 * **Strict consistency (money, stock)?** → **Pessimistic Lock**
 
+```java
+// ===============================
+// 1. SHEDLOCK (Spring Boot)
+// ===============================
+
+@Configuration
+@EnableScheduling
+@EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
+public class ShedLockConfig {
+
+    @Bean
+    public LockProvider lockProvider(DataSource dataSource) {
+        return new JdbcTemplateLockProvider(dataSource);
+    }
+}
+
+@Component
+public class ScheduledJob {
+
+    @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(name = "myScheduledJob", lockAtMostFor = "PT5M", lockAtLeastFor = "PT1M")
+    public void executeJob() {
+        System.out.println("Running scheduled job safely with ShedLock");
+    }
+}
+```
+
+```java
+// ===============================
+// 2. ADVISORY LOCK (PostgreSQL)
+// ===============================
+
+@Repository
+public class AdvisoryLockRepository {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public AdvisoryLockRepository(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public boolean acquireLock(long lockKey) {
+        return jdbcTemplate.queryForObject(
+                "SELECT pg_try_advisory_lock(?)",
+                Boolean.class,
+                lockKey
+        );
+    }
+
+    public void releaseLock(long lockKey) {
+        jdbcTemplate.execute(
+                "SELECT pg_advisory_unlock(" + lockKey + ")"
+        );
+    }
+}
+```
+
+```java
+// ===============================
+// 3. OPTIMISTIC LOCK (JPA)
+// ===============================
+
+@Entity
+@Table(name = "product")
+public class Product {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    private int quantity;
+
+    @Version
+    private Long version;
+}
+
+@Service
+@Transactional
+public class ProductService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public void updateQuantity(Long productId, int newQty) {
+        Product product = entityManager.find(Product.class, productId);
+        product.setQuantity(newQty); // version checked on commit
+    }
+}
+```
+
+```java
+// ===============================
+// 4. PESSIMISTIC LOCK (JPA)
+// ===============================
+
+@Entity
+@Table(name = "account")
+public class Account {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private double balance;
+}
+
+@Service
+@Transactional
+public class AccountService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public void withdraw(Long accountId, double amount) {
+        Account account = entityManager.find(
+                Account.class,
+                accountId,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        account.setBalance(account.getBalance() - amount);
+    }
+}
+```
+
+### 🔑 Notes
+* **ShedLock** → Distributed scheduled jobs
+* **Advisory Lock** → DB-level logical locking
+* **Optimistic Lock** → Version-based conflict detection
+* **Pessimistic Lock** → Blocking row-level lock
 
 
