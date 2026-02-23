@@ -147,3 +147,133 @@ Out-of-scope functional requirements for an "Add Click Event" feature typically 
 Defining out-of-scope functional requirements is crucial to manage stakeholder expectations, clarify project boundaries, and prioritize development efforts effectively. It helps ensure that the project stays focused on delivering the core functionality without unnecessary scope creep or confusion about what is included or excluded.
 
 When documenting out-of-scope requirements, it's beneficial to communicate these clearly in project documentation, such as project charters, requirements specifications, or user stories. This transparency helps stakeholders understand what to expect from the feature and what will not be addressed in the current iteration.
+
+
+
+# **Ad Click Counter & Aggregator systems**, accuracy is critical because:
+
+> 💰 Every click directly impacts advertiser billing.
+
+So unlike streaming systems (where ±1% error is acceptable), here we prioritize **strong consistency, deduplication, and fraud prevention**.
+
+Below is a clean comparison-style table.
+
+---
+
+### 📊 Ad Click Counter & Aggregator – Challenges, Solutions & Trade-offs
+
+| ###  | Challenge                          | Why It’s Critical                | Solution                                                | Trade-Off                   |
+| -- | ---------------------------------- | -------------------------------- | ------------------------------------------------------- | --------------------------- |
+| 1  | Exact click counting               | Billing depends on it            | Strong consistency (transactional DB / atomic counters) | Higher latency              |
+| 2  | Duplicate clicks (retries/network) | Overbilling risk                 | Idempotency key (click_id) + dedupe store               | Extra storage               |
+| 3  | Fraud / bot clicks                 | Financial loss                   | Fraud detection (IP/device fingerprint, ML models)      | False positives possible    |
+| 4  | High write throughput              | Millions of clicks/sec           | Partitioned event ingestion (Kafka)                     | Complex infra               |
+| 5  | Data loss risk                     | Legal/financial impact           | Replication (RF=3), durable logs                        | Higher infra cost           |
+| 6  | Exactly-once processing            | Double billing risk              | Kafka + transactional consumers                         | Increased complexity        |
+| 7  | Late-arriving events               | Inaccurate aggregation           | Event-time processing + watermarking                    | Processing delay            |
+| 8  | Cross-region reconciliation        | Same user clicking globally      | Global unique click_id                                  | Coordination overhead       |
+| 9  | Real-time reporting                | Advertisers need dashboard       | Lambda/Kappa architecture                               | Duplicate processing layers |
+| 10 | Aggregation accuracy               | Daily billing reports must match | Periodic reconciliation jobs                            | Extra compute cost          |
+| 11 | Data tampering                     | Security risk                    | Signed click tokens                                     | CPU overhead                |
+| 12 | Storage growth                     | Billions of clicks/day           | Time-partitioned tables                                 | Maintenance complexity      |
+
+---
+
+### 🏗️ Architecture Focus (Accuracy-First)
+
+```plaintext
+Client → Ad Server → Click Tracker API
+        → Kafka (Durable Log, RF=3)
+        → Stream Processor (Exactly-once)
+        → Transactional DB (Sharded SQL / Spanner)
+        → Billing System
+```
+
+Key difference from streaming:
+
+* Durable storage first
+* Counting happens after persistence
+* No approximation allowed
+
+---
+
+### 🔍 Key Trade-Off Themes (Ad Click System)
+
+| Design Choice           | Benefit                 | Cost                    |
+| ----------------------- | ----------------------- | ----------------------- |
+| Strong consistency      | Accurate billing        | Higher latency          |
+| Exactly-once processing | No double billing       | Complex infra           |
+| Synchronous DB write    | Safe                    | Slower response         |
+| Fraud detection layers  | Financial protection    | Compute heavy           |
+| Global reconciliation   | Accurate global billing | Cross-region complexity |
+| Long data retention     | Audit capability        | Storage cost            |
+
+---
+
+### ⚖️ Streaming vs Ad Click System (Core Difference)
+
+| Factor           | Streaming View Count    | Ad Click Counter      |
+| ---------------- | ----------------------- | --------------------- |
+| Accuracy         | Approx OK (±1%)         | Must be exact         |
+| Consistency      | Eventual                | Strong / Exactly-once |
+| Financial Impact | Low                     | Very High             |
+| Storage          | In-memory (Redis heavy) | Durable DB first      |
+| Error tolerance  | Acceptable              | Not acceptable        |
+| Fraud detection  | Basic                   | Advanced & critical   |
+
+---
+
+### 🎯 Interview One-Line Summary
+
+> Streaming systems optimize for scalability with approximate counting, while Ad Click systems optimize for financial accuracy using exactly-once processing, deduplication, and strong consistency guarantees.
+
+---
+
+# Live Streaming View Count
+
+Below is a **compact, interview-ready table** summarizing major challenges in designing a live view count system (like large sports events) and their solutions with trade-offs.
+
+---
+
+### 📊 Live Streaming View Count – Challenges, Solutions & Trade-offs
+
+| ###  | Challenge                                 | Why It’s a Problem                | Solution                                    | Trade-Off                      |
+| -- | ----------------------------------------- | --------------------------------- | ------------------------------------------- | ------------------------------ |
+| 1  | Massive concurrent users (10M+)           | Single server/database crashes    | Horizontal scaling + load balancer          | Higher infra cost              |
+| 2  | Counter hotspot                           | Single counter becomes bottleneck | Sharded counters (100+ shards in Redis)     | Need aggregation logic         |
+| 3  | High write throughput (heartbeats)        | Millions of writes/sec            | Distributed cache (Redis Cluster)           | Eventual consistency           |
+| 4  | Sudden traffic spikes (e.g., goal moment) | System overload                   | Auto-scaling + rate limiting                | Scaling delay (few seconds)    |
+| 5  | Users close app without EXIT              | Incorrect concurrent count        | Heartbeat + TTL expiration                  | Slight delay in removal        |
+| 6  | Duplicate events                          | Double counting                   | Idempotent session IDs                      | Extra memory usage             |
+| 7  | Network instability                       | False session drop                | Grace window (30–45 sec TTL)                | Slight inaccuracy              |
+| 8  | Global users                              | High latency                      | Regional clusters + local aggregation       | Complex cross-region sync      |
+| 9  | Unique viewer counting                    | High memory if exact count        | HyperLogLog (approximate)                   | Small error (~1–2%)            |
+| 10 | Real-time display to millions             | Read explosion on DB              | Push via WebSocket/SSE                      | Stateful connection management |
+| 11 | System crashes (Redis/Kafka)              | Data loss                         | Replication (RF=3), failover                | More infra cost                |
+| 12 | Bot/fake traffic                          | Inflated counts                   | Rate limit + anomaly detection              | Possible false positives       |
+| 13 | Data persistence                          | Redis is in-memory                | Periodic DB snapshot (Cassandra/ClickHouse) | Slight data lag                |
+| 14 | Consistency vs speed                      | Strong consistency slows system   | Eventual consistency model                  | Small temporary mismatch       |
+| 15 | Monitoring & alerting                     | Silent failure risk               | Metrics + auto-healing                      | Operational complexity         |
+
+---
+
+### 🎯 Key Trade-Off Themes
+
+| Design Choice            | Benefit          | Cost                     |
+| ------------------------ | ---------------- | ------------------------ |
+| Exact counting           | 100% accurate    | Expensive, slow at scale |
+| Approximate counting     | Scalable & cheap | Minor error margin       |
+| Short heartbeat interval | More accurate    | Higher traffic           |
+| Long heartbeat interval  | Less traffic     | Slower session cleanup   |
+| Single region            | Simpler          | High latency globally    |
+| Multi-region             | Fast globally    | Complex reconciliation   |
+
+---
+
+### ⚡ Interview One-Line Summary
+
+> We sacrifice perfect accuracy for scalability by using sharded Redis counters, heartbeat-based TTL sessions, Kafka for event streaming, and approximate counting for unique users.
+
+---
+
+
