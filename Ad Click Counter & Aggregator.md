@@ -154,7 +154,7 @@ When documenting out-of-scope requirements, it's beneficial to communicate these
 
 > 💰 Every click directly impacts advertiser billing.
 
-So unlike streaming systems (where ±1% error is acceptable), here we prioritize **strong consistency, deduplication, and fraud prevention**.
+So unlike streaming systems i;e Jio Cinema and Disney hotstar (where ±1% error is acceptable), here we prioritize **strong consistency, deduplication, and fraud prevention**.
 
 Below is a clean comparison-style table.
 
