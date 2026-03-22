@@ -2,7 +2,8 @@
 
 
 ## Table of Contents
-- [Introduction](#Introduction)
+- [System Architecture](#1. **Evaluate Current System Architecture and Performance Bottlenecks**)
+- [System Architecture](#2. **Load Testing and Stress Testing**)
 
 
 # Introduction 
