@@ -2,9 +2,7 @@
 
 
 ## Table of Contents
-import TOCInline from '@theme/TOCInline';
-
-<TOCInline />
+- [Introduction](#1. **Evaluate Current System Architecture and Performance Bottlenecks**)
 
 Increasing the **transactions per second (TPS)** that a microservice API can handle—from **10 TPS to 10,000 TPS**—requires careful consideration of both **software and hardware** optimizations. The goal is to ensure that the system can handle significantly more requests without sacrificing performance, stability, or reliability. Below are the key steps you should follow to scale the system effectively:
 
