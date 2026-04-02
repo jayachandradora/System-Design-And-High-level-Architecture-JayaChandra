@@ -1,6 +1,6 @@
 # Design a system to migrate 50TB with handling ~100k Writes Per Sec
 
-Great—this is exactly how you should structure it for interviews. I’ll give you a **clean, end-to-end system design answer** based on that video.
+Great—this is exactly how you should structure it for interviews. I’ll give you a **clean, end-to-end system design answer** based on that video. https://www.youtube.com/watch?v=JR6Z1k1kKMM&t=362s
 
 ---
 
